@@ -69,11 +69,16 @@ if __name__ == "__main__":
 
     best_score = -1
     best_columns = 0
+    columns_to_drop = []
     for i in range(k):
         model = Lasso(alpha=0.1)
         model.fit(x_train, y_train)
         coef = model.coef_
         idx = np.argmin(np.abs(coef))
+        columns_to_drop.append(idx)
+
+        dropped_column = x_train[:, [idx]]
+        print("Variance of dropped column_ {}".format(np.var(dropped_column)))
 
         x_train = np.delete(x_train, idx, 1)
         x_test = np.delete(x_test, idx, 1)
@@ -89,6 +94,8 @@ if __name__ == "__main__":
 
     print("Best score: {}".format(best_score)) 
     print("Best dropped columns: {}".format(best_dropped_columns))
+
+    pd.DataFrame(columns_to_drop).to_csv('columns_to_drop.csv')
 
     # sel = VarianceThreshold(threshold=(0.95))
     # x_train = sel.fit_transform(x_train, y_train)
