@@ -85,27 +85,32 @@ def get_outlier_mask(x_train, gm, threshold=PERC_THRESHOLD, print_stats=False):
     return scores > perc
 
 
-def cross_validation_gmm(x_train, y_train, num_of_splits=5):
+def cross_validation_gmm_components(
+    x_train, y_train, num_of_splits=5, regressor_steps=GBR_ESTIMATORS
+):
     scores = []
     kf = KFold(n_splits=num_of_splits, shuffle=True)
-    for threshold in range(1, 40, 5):
+    for components in range(10, 200, 10):
         score = 0
         for train_index, test_index in kf.split(x_train):
             x_train_cv, x_test_cv = x_train[train_index], x_train[test_index]
             y_train_cv, y_test_cv = y_train[train_index], y_train[test_index]
-            gm = train_outlier_detection_model(x_train_cv, threshold)
+            gm = train_outlier_detection_model(
+                x_train_cv, threshold, n_components=componenets
+            )
 
             mask = get_outlier_mask(x_train_cv, gm, threshold)
             x_train_cv = x_train_cv[np.nonzero(mask)[0]]
             y_train_cv = y_train_cv[np.nonzero(mask)[0]]
 
             clf = GradientBoostingRegressor(
-                loss="squared_error", n_estimators=GBR_ESTIMATORS
+                loss="squared_error", n_estimators=regressor_steps
             )
             clf.fit(x_train, y_train)
             y_pred = clf.predict(x_test_cv)
             score += r2_score(y_test_cv, y_pred)
         scores.append(score / 4)
+        print("Threshold: ", threshold, "Score: ", score / 4)
     return scores
 
 
