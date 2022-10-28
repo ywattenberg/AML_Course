@@ -1,7 +1,10 @@
+import os
+import warnings
+
 import numpy as np
 import pandas as pd
-import os
 import matplotlib.pyplot as plt
+
 from sklearn import preprocessing
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.impute import SimpleImputer
@@ -11,9 +14,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.mixture import GaussianMixture
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.ensemble import GradientBoostingRegressor
-import warnings
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
+from sklearn.model_selection import KFold
 
 warnings.filterwarnings("ignore")
 
@@ -25,41 +28,105 @@ LASSO_ALPHA = 5
 GBR_ESTIMATORS = 200
 D_COLS_ROUND = 16
 
+
+def get_imputer(x_train, max_iter=10, k_neighbors=IMP_NN):
+    imp = IterativeImputer(
+        max_iter=max_iter, n_nearest_features=k_neighbors, random_state=0
+    )
+    imp.fit(x_train)
+    return imp
+
+
+def load_data(use_imp_data=False, safe_imp_data=True):
+    if use_imp_data:
+        x_train_imp = pd.read_csv("data/x_train_imp.csv")
+        test_imp = pd.read_csv("data/test_imp.csv")
+        y_train = pd.read_csv("data/y_train.csv").drop("id", axis=1)
+
+        id = test_imp["id"].to_numpy()
+        test_imp = test_imp.drop("id", axis=1).to_numpy()
+
+        return x_train_imp.to_numpy(), test_imp, id, y_train.to_numpy()
+
+    else:
+        x_train = pd.read_csv("data/X_train.csv").drop("id", axis=1)
+        y_train = pd.read_csv("data/y_train.csv").drop("id", axis=1).to_numpy()
+        test = pd.read_csv("data/X_test.csv")
+
+        id = test["id"].to_numpy()
+        test = test.drop("id", axis=1)
+
+        imp = get_imputer(x_train)
+        x_train_imp = imp.transform(x_train)
+        test_imp = imp.transform(test)
+
+        if safe_imp_data:
+            pd.DataFrame(x_train_imp).to_csv("data/x_train_imp.csv", index=False)
+            test_df = pd.DataFrame(test_imp)
+            test_df["id"] = id
+            test_df.to_csv("data/test_imp.csv", index=False)
+        return x_train_imp, test_imp, id, y_train
+
+
+def train_outlier_detection_model(x_train, n_components=GM_COMPONENTS, random=False):
+    if random:
+        gm = GaussianMixture(n_components=n_components)
+    else:
+        gm = GaussianMixture(n_components=n_components, random_state=0)
+    gm.fit(x_train)
+    return gm
+
+
+def get_outlier_mask(x_train, gm, threshold=PERC_THRESHOLD, print_stats=False):
+    scores = gm.score_samples(x_train)
+    perc = np.percentile(scores, threshold)
+    if print_stats:
+        print(f"The threshold of the score is {perc:.2f}")
+    return scores > perc
+
+
+def cross_validation_gmm(x_train, y_train, num_of_splits=5):
+    scores = []
+    kf = KFold(n_splits=num_of_splits, shuffle=True)
+    for threshold in range(1, 40, 5):
+        score = 0
+        for train_index, test_index in kf.split(x_train):
+            x_train_cv, x_test_cv = x_train[train_index], x_train[test_index]
+            y_train_cv, y_test_cv = y_train[train_index], y_train[test_index]
+            gm = train_outlier_detection_model(x_train_cv, threshold)
+
+            mask = get_outlier_mask(x_train_cv, gm, threshold)
+            x_train_cv = x_train_cv[np.nonzero(mask)[0]]
+            y_train_cv = y_train_cv[np.nonzero(mask)[0]]
+
+            clf = GradientBoostingRegressor(
+                loss="squared_error", n_estimators=GBR_ESTIMATORS
+            )
+            clf.fit(x_train, y_train)
+            y_pred = clf.predict(x_test_cv)
+            score += r2_score(y_test_cv, y_pred)
+        scores.append(score / 4)
+    return scores
+
+
 if __name__ == "__main__":
 
     # Load data
-    if LOAD_IMP_DATA:
-        x_train = pd.read_csv("data/x_train_imp.csv")
-    else:
-        x_train = pd.read_csv("data/X_train.csv")
-
-    test = pd.read_csv("data/X_test.csv")
-    y_train = pd.read_csv("data/y_train.csv")
-
-    pred = pd.DataFrame(test["id"])
-
-    if not LOAD_IMP_DATA:
-        # Remove nan values
-        imp = IterativeImputer(n_nearest_features=IMP_NN, imputation_order="random", random_state=0)
-
-        x_train = imp.fit_transform(x_train)
-
-        pd.DataFrame(x_train).to_csv("data/x_train_imp.csv", index=False)
+    x_train, test, test_id, y_train = load_data(use_imp_data=False)
+    print("Data loaded")
 
     # normalize data
-    x_train = preprocessing.StandardScaler().fit_transform(x_train)
-    y_train = y_train.to_numpy()
+    scaler = preprocessing.StandardScaler().fit(x_train)
+    x_train = scaler.transform(x_train)
+    test = scaler.transform(test)
 
+    scores = cross_validation_gmm(x_train, y_train)
+    print("Cross validation scores: ", scores)
+    quit()
     # make train test split
     x_train, x_test, y_train, y_test = train_test_split(
         x_train, y_train, test_size=0.2, random_state=42
     )
-
-    # delete id column
-    x_train = np.delete(x_train, axis=1, obj=0)
-    x_test = np.delete(x_test, axis=1, obj=0)
-    y_train = np.squeeze(np.delete(y_train, axis=1, obj=0))
-    y_test = np.squeeze(np.delete(y_test, axis=1, obj=0))
 
     gm = GaussianMixture(n_components=GM_COMPONENTS, random_state=0).fit(x_train)
     score = gm.score_samples(x_train)
@@ -100,7 +167,9 @@ if __name__ == "__main__":
             x_train = np.delete(x_train, idx, 1)
             x_test = np.delete(x_test, idx, 1)
 
-        clf = GradientBoostingRegressor(loss="squared_error", n_estimators=GBR_ESTIMATORS)
+        clf = GradientBoostingRegressor(
+            loss="squared_error", n_estimators=GBR_ESTIMATORS
+        )
         clf.fit(x_train, y_train)
 
         print(f"New column count: {len(coef)}")
