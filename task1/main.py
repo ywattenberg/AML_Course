@@ -35,13 +35,14 @@ if __name__ == "__main__":
     y_train = pd.read_csv("data/y_train.csv")
 
     pred = pd.DataFrame(test["id"])
+    
+    if not LOAD_IMP_DATA:
+        # Remove nan values
+        imp = IterativeImputer(n_nearest_features=IMP_NN, imputation_order="random", random_state=0)
 
-    # Remove nan values
-    imp = IterativeImputer(n_nearest_features=IMP_NN, imputation_order="random", random_state=0)
+        x_train = imp.fit_transform(x_train)
 
-    x_train = imp.fit_transform(x_train)
-
-    pd.DataFrame(x_train).to_csv("data/x_train_imp.csv", index=False)
+        pd.DataFrame(x_train).to_csv("data/x_train_imp.csv", index=False)
 
     # normalize data
     x_train = preprocessing.StandardScaler().fit_transform(x_train)
