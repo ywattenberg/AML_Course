@@ -86,7 +86,11 @@ def get_outlier_mask(x_train, gm, threshold=PERC_THRESHOLD, print_stats=False):
 
 
 def cross_validation_gmm_components(
-    x_train, y_train, num_of_splits=5, regressor_steps=GBR_ESTIMATORS
+    x_train,
+    y_train,
+    num_of_splits=5,
+    regressor_steps=GBR_ESTIMATORS,
+    threshold=PERC_THRESHOLD,
 ):
     scores = []
     kf = KFold(n_splits=num_of_splits, shuffle=True)
@@ -96,7 +100,7 @@ def cross_validation_gmm_components(
             x_train_cv, x_test_cv = x_train[train_index], x_train[test_index]
             y_train_cv, y_test_cv = y_train[train_index], y_train[test_index]
             gm = train_outlier_detection_model(
-                x_train_cv, threshold, n_components=componenets
+                x_train_cv, threshold, n_components=components
             )
 
             mask = get_outlier_mask(x_train_cv, gm, threshold)
@@ -125,7 +129,7 @@ if __name__ == "__main__":
     x_train = scaler.transform(x_train)
     test = scaler.transform(test)
 
-    scores = cross_validation_gmm(x_train, y_train)
+    scores = cross_validation_gmm_components(x_train, y_train)
     print("Cross validation scores: ", scores)
     quit()
     # make train test split
