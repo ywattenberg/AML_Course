@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import os
+import matplotlib.pyplot as plt
 from sklearn import preprocessing
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.impute import SimpleImputer
@@ -15,11 +17,11 @@ from sklearn.impute import IterativeImputer
 
 warnings.filterwarnings("ignore")
 
-IMP_NN = 100
+IMP_NN = 32
 LOAD_IMP_DATA = True
 GM_COMPONENTS = 100
 PERC_THRESHOLD = 10
-LASSO_ALPHA = 0.1
+LASSO_ALPHA = 5
 GBR_ESTIMATORS = 200
 D_COLS_ROUND = 16
 
@@ -35,7 +37,7 @@ if __name__ == "__main__":
     y_train = pd.read_csv("data/y_train.csv")
 
     pred = pd.DataFrame(test["id"])
-    
+
     if not LOAD_IMP_DATA:
         # Remove nan values
         imp = IterativeImputer(n_nearest_features=IMP_NN, imputation_order="random", random_state=0)
@@ -75,6 +77,8 @@ if __name__ == "__main__":
     best_score = -1
     best_columns = 0
     columns_to_drop = []
+    scores = []
+    features = []
 
     for i in range(0, k, D_COLS_ROUND):
         model = Lasso(alpha=LASSO_ALPHA)
@@ -98,7 +102,7 @@ if __name__ == "__main__":
 
         clf = GradientBoostingRegressor(loss="squared_error", n_estimators=GBR_ESTIMATORS)
         clf.fit(x_train, y_train)
-        
+
         print(f"New column count: {len(coef)}")
         score = r2_score(y_test, clf.predict(x_test))
         if best_score < score:
@@ -107,8 +111,66 @@ if __name__ == "__main__":
             pd.DataFrame(x_train).to_csv("best_train.csv", index=False)
             pd.DataFrame(x_test).to_csv("best_test.csv", index=False)
 
+        scores.append(score)
+        features.append(len(coef))
+
         print("Dropped columns: {} R2 score: {}".format(i + 1, score))
         pd.DataFrame(columns_to_drop).to_csv("columns_to_drop.csv", index=False)
+
+    plt.plot(features, scores)
+    plt.savefig(
+        f"runs/{IMP_NN}_{LOAD_IMP_DATA}_{GM_COMPONENTS}_{PERC_THRESHOLD}_{LASSO_ALPHA}_{GBR_ESTIMATORS}_{D_COLS_ROUND}_{best_score}.png"
+    )
+
+    if not os.path.exists("runs/saved_runs.csv"):
+        pd.DataFrame(
+            [
+                [
+                    IMP_NN,
+                    LOAD_IMP_DATA,
+                    GM_COMPONENTS,
+                    PERC_THRESHOLD,
+                    LASSO_ALPHA,
+                    GBR_ESTIMATORS,
+                    D_COLS_ROUND,
+                    best_score,
+                ]
+            ],
+            columns=[
+                "IMP_NN",
+                "LOAD_IMP_DATA",
+                "GM_COMPONENTS",
+                "PERC_THRESHOLD",
+                "LASSO_ALPHA",
+                "GBR_ESTIMATORS",
+                "D_COLS_ROUND",
+                "best_score",
+            ],
+        ).to_csv(
+            "runs/saved_runs.csv",
+            index=False,
+            mode="a",
+        )
+    else:
+        df = pd.read_csv("runs/saved_runs.csv")
+        pd.concat(
+            [
+                df,
+                pd.DataFrame(
+                    [
+                        IMP_NN,
+                        LOAD_IMP_DATA,
+                        GM_COMPONENTS,
+                        PERC_THRESHOLD,
+                        LASSO_ALPHA,
+                        GBR_ESTIMATORS,
+                        D_COLS_ROUND,
+                        best_score,
+                    ]
+                ),
+            ],
+            axis=1,
+        ).to_csv("runs/saved_runs.csv", index=False)
 
     print("Best score: {}".format(best_score))
     print("Best dropped columns: {}".format(best_dropped_columns))
