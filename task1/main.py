@@ -22,7 +22,7 @@ warnings.filterwarnings("ignore")
 
 IMP_NN = 32
 LOAD_IMP_DATA = True
-GM_COMPONENTS = 100
+GM_COMPONENTS = 140
 PERC_THRESHOLD = 10
 LASSO_ALPHA = 5
 GBR_ESTIMATORS = 200
@@ -68,7 +68,7 @@ def load_data(use_imp_data=False, safe_imp_data=True):
         return x_train_imp, test_imp, id, y_train
 
 
-def train_outlier_detection_model(x_train, n_components=GM_COMPONENTS, random=False):
+def train_outlier_detection_model(x_train, n_components=GM_COMPONENTS, random=True):
     if random:
         gm = GaussianMixture(n_components=n_components)
     else:
@@ -92,16 +92,15 @@ def cross_validation_gmm_components(
     regressor_steps=GBR_ESTIMATORS,
     threshold=PERC_THRESHOLD,
 ):
-    scores = []
+    scores = {}
     kf = KFold(n_splits=num_of_splits, shuffle=True)
     for components in range(10, 200, 10):
         score = 0
+        print(f"Components: {components}")
         for train_index, test_index in kf.split(x_train):
             x_train_cv, x_test_cv = x_train[train_index], x_train[test_index]
             y_train_cv, y_test_cv = y_train[train_index], y_train[test_index]
-            gm = train_outlier_detection_model(
-                x_train_cv, threshold, n_components=components
-            )
+            gm = train_outlier_detection_model(x_train_cv, n_components=components)
 
             mask = get_outlier_mask(x_train_cv, gm, threshold)
             x_train_cv = x_train_cv[np.nonzero(mask)[0]]
@@ -110,18 +109,65 @@ def cross_validation_gmm_components(
             clf = GradientBoostingRegressor(
                 loss="squared_error", n_estimators=regressor_steps
             )
-            clf.fit(x_train, y_train)
+            clf.fit(x_train_cv, y_train_cv)
             y_pred = clf.predict(x_test_cv)
-            score += r2_score(y_test_cv, y_pred)
-        scores.append(score / 4)
-        print("Threshold: ", threshold, "Score: ", score / 4)
+            curr_score = r2_score(y_test_cv, y_pred)
+            score += curr_score
+            print(f"Current score {components} components: {curr_score:.4f}")
+        scores[score / num_of_splits] = components
+        print("-" * 50)
+        print(f"Final score for {components} components: {score / num_of_splits:.4f}")
+        print("-" * 50)
+    return scores
+
+
+def cross_validation_gmm_threshold(
+    x_train,
+    y_train,
+    num_of_splits=5,
+    regressor_steps=GBR_ESTIMATORS,
+    threshold=PERC_THRESHOLD,
+    n_components=GM_COMPONENTS,
+):
+    scores = {}
+    kf = KFold(n_splits=num_of_splits, shuffle=True)
+    models = []
+    for train_index, test_index in kf.split(x_train):
+        x_train_cv = x_train[train_index]
+        models.append(
+            train_outlier_detection_model(x_train_cv, n_components=n_components)
+        )
+
+    for threshold in range(0, 80, 5):
+        score = 0
+        print(f"Threshold: {threshold}%")
+        for idx, (train_index, test_index) in enumerate(kf.split(x_train)):
+            x_train_cv, x_test_cv = x_train[train_index], x_train[test_index]
+            y_train_cv, y_test_cv = y_train[train_index], y_train[test_index]
+
+            mask = get_outlier_mask(x_train_cv, models[idx], threshold)
+            x_train_cv = x_train_cv[np.nonzero(mask)[0]]
+            y_train_cv = y_train_cv[np.nonzero(mask)[0]]
+
+            clf = GradientBoostingRegressor(
+                loss="squared_error", n_estimators=regressor_steps
+            )
+            clf.fit(x_train_cv, y_train_cv)
+            y_pred = clf.predict(x_test_cv)
+            curr_score = r2_score(y_test_cv, y_pred)
+            score += curr_score
+            print(f"Current score with threshold {threshold}%: {curr_score:.4f}")
+        scores[score / num_of_splits] = threshold
+        print("-" * 50)
+        print(f"Final score with threshold {threshold}%: {score / num_of_splits:.4f}")
+        print("-" * 50)
     return scores
 
 
 if __name__ == "__main__":
 
     # Load data
-    x_train, test, test_id, y_train = load_data(use_imp_data=False)
+    x_train, test, test_id, y_train = load_data(use_imp_data=True)
     print("Data loaded")
 
     # normalize data
@@ -129,8 +175,18 @@ if __name__ == "__main__":
     x_train = scaler.transform(x_train)
     test = scaler.transform(test)
 
-    scores = cross_validation_gmm_components(x_train, y_train)
-    print("Cross validation scores: ", scores)
+    component_scores = cross_validation_gmm_components(x_train, y_train)
+    print("Finished cross validation for components")
+    best_num_of_components = component_scores[max(component_scores.keys())]
+    print(f"Best model has {best_num_of_components} components")
+
+    threshold_scores = cross_validation_gmm_threshold(
+        x_train, y_train, n_components=best_num_of_components
+    )
+    print("Finished cross validation for threshold")
+    best_threshold = threshold_scores[max(threshold_scores.keys())]
+    print(f"Best model has {best_threshold} threshold")
+
     quit()
     # make train test split
     x_train, x_test, y_train, y_test = train_test_split(
@@ -153,7 +209,7 @@ if __name__ == "__main__":
     best_score = -1
     best_columns = 0
     columns_to_drop = []
-    scores = []
+    component_scores = []
     features = []
 
     for i in range(0, k, D_COLS_ROUND):
@@ -189,13 +245,13 @@ if __name__ == "__main__":
             pd.DataFrame(x_train).to_csv("best_train.csv", index=False)
             pd.DataFrame(x_test).to_csv("best_test.csv", index=False)
 
-        scores.append(score)
+        component_scores.append(score)
         features.append(len(coef))
 
         print("Dropped columns: {} R2 score: {}".format(i + 1, score))
         pd.DataFrame(columns_to_drop).to_csv("columns_to_drop.csv", index=False)
 
-    plt.plot(features, scores)
+    plt.plot(features, component_scores)
     plt.savefig(
         f"runs/{IMP_NN}_{LOAD_IMP_DATA}_{GM_COMPONENTS}_{PERC_THRESHOLD}_{LASSO_ALPHA}_{GBR_ESTIMATORS}_{D_COLS_ROUND}_{best_score}.png"
     )
