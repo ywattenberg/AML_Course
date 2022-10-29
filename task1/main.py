@@ -1,5 +1,7 @@
 import os
 import warnings
+import json
+
 
 import numpy as np
 import pandas as pd
@@ -91,10 +93,13 @@ def cross_validation_gmm_components(
     num_of_splits=5,
     regressor_steps=GBR_ESTIMATORS,
     threshold=PERC_THRESHOLD,
+    begin=10,
+    end=200,
+    step=10,
 ):
     scores = {}
     kf = KFold(n_splits=num_of_splits, shuffle=True)
-    for components in range(10, 200, 10):
+    for components in range(begin, end, step):
         score = 0
         print(f"Components: {components}")
         for train_index, test_index in kf.split(x_train):
@@ -128,6 +133,9 @@ def cross_validation_gmm_threshold(
     regressor_steps=GBR_ESTIMATORS,
     threshold=PERC_THRESHOLD,
     n_components=GM_COMPONENTS,
+    begin=0,
+    end=80,
+    step=5,
 ):
     scores = {}
     kf = KFold(n_splits=num_of_splits, shuffle=True)
@@ -138,7 +146,7 @@ def cross_validation_gmm_threshold(
             train_outlier_detection_model(x_train_cv, n_components=n_components)
         )
 
-    for threshold in range(0, 80, 5):
+    for threshold in range(begin, end, step):
         score = 0
         print(f"Threshold: {threshold}%")
         for idx, (train_index, test_index) in enumerate(kf.split(x_train)):
@@ -164,17 +172,85 @@ def cross_validation_gmm_threshold(
     return scores
 
 
+def cross_validation_regression_num_regressors(
+    x_train,
+    y_train,
+    num_of_splits=5,
+    regressor_steps=GBR_ESTIMATORS,
+    begin=100,
+    end=1000,
+    step=50,
+):
+    scores = {}
+    kf = KFold(n_splits=num_of_splits, shuffle=True)
+    for regressors in range(begin, end, step):
+        score = 0
+        print(f"Regressor steps: {regressors}")
+        for train_index, test_index in kf.split(x_train):
+            x_train_cv, x_test_cv = x_train[train_index], x_train[test_index]
+            y_train_cv, y_test_cv = y_train[train_index], y_train[test_index]
+
+            clf = GradientBoostingRegressor(
+                loss="squared_error", n_estimators=regressors
+            )
+            clf.fit(x_train_cv, y_train_cv)
+            y_pred = clf.predict(x_test_cv)
+            curr_score = r2_score(y_test_cv, y_pred)
+            score += curr_score
+            print(f"Current score {regressors} regressors: {curr_score:.4f}")
+        scores[score / num_of_splits] = regressors
+        print("-" * 50)
+        print(f"Final score for {regressors} regressors: {score / num_of_splits:.4f}")
+        print("-" * 50)
+    return scores
+
+
+def filter_outliers(
+    x_train, y_train, threshold=PERC_THRESHOLD, n_components=GM_COMPONENTS
+):
+    gm = train_outlier_detection_model(x_train, n_components=n_components)
+    mask = get_outlier_mask(x_train, gm, threshold)
+    return x_train[np.nonzero(mask)[0]], y_train[np.nonzero(mask)[0]]
+
+
+def dump_scores_to_file(scores, path):
+    if os.path.exists(path):
+        with open(path, "r+") as f:
+            data = json.load(f)
+            runs = data["runs"]
+            runs[len(runs)] = scores
+            data["optimal"].append(scores[max(scores.keys())])
+            f.seek(0)
+            json.dump(data, f, indent=4)
+    else:
+        with open(path, "w") as f:
+            data = {"optimal": [scores[max(scores.keys())]], "runs": {0: scores}}
+            json.dump(data, f, indent=4)
+
+
+def safe_cross_scores(
+    component_scores=None, threshold_scores=None, regressor_scores=None
+):
+    if component_scores is not None:
+        dump_scores_to_file(component_scores, "gmm_components.json")
+    if threshold_scores is not None:
+        dump_scores_to_file(threshold_scores, "gmm_threshold.json")
+    if regressor_scores is not None:
+        dump_scores_to_file(regressor_scores, "regressor_num.json")
+
+
 if __name__ == "__main__":
 
     # Load data
     x_train, test, test_id, y_train = load_data(use_imp_data=True)
     print("Data loaded")
 
-    # normalize data
+    # Normalize data
     scaler = preprocessing.StandardScaler().fit(x_train)
     x_train = scaler.transform(x_train)
     test = scaler.transform(test)
 
+    # Select outlier detection model
     component_scores = cross_validation_gmm_components(x_train, y_train)
     print("Finished cross validation for components")
     best_num_of_components = component_scores[max(component_scores.keys())]
@@ -187,22 +263,23 @@ if __name__ == "__main__":
     best_threshold = threshold_scores[max(threshold_scores.keys())]
     print(f"Best model has {best_threshold} threshold")
 
-    quit()
-    # make train test split
-    x_train, x_test, y_train, y_test = train_test_split(
-        x_train, y_train, test_size=0.2, random_state=42
+    print(
+        f"Filtering outliers with {best_num_of_components} components and threshold {best_threshold}%"
     )
 
-    gm = GaussianMixture(n_components=GM_COMPONENTS, random_state=0).fit(x_train)
-    score = gm.score_samples(x_train)
+    x_train, y_train = filter_outliers(
+        x_train, y_train, threshold=best_threshold, n_components=best_num_of_components
+    )
 
-    # Get the score threshold for anomaly
-    pct_threshold = np.percentile(score, PERC_THRESHOLD)  # Print the score threshold
-    print(f"The threshold of the score is {pct_threshold:.2f}")  # Label the anomalies
-    outliers = score > pct_threshold
+    num_regressor_score = cross_validation_regression_num_regressors(x_train, y_train)
+    print("Finished cross validation for number of regressors")
+    best_num_of_regressors = num_regressor_score[max(num_regressor_score.keys())]
+    print(f"Best model has {best_num_of_regressors} regressors")
 
-    x_train = x_train[np.nonzero(outliers)[0]]
-    y_train = y_train[np.nonzero(outliers)[0]]
+    safe_cross_scores(component_scores, threshold_scores, num_regressor_score)
+    # Train model
+
+    quit()
 
     k = x_train.shape[1] - 1
 
