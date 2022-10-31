@@ -1,32 +1,21 @@
 import os
 import warnings
-import json
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
 from sklearn import preprocessing
-from sklearn.feature_selection import VarianceThreshold
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import Ridge, Lasso
-from sklearn.metrics import r2_score
-from sklearn.model_selection import train_test_split
-from sklearn.mixture import GaussianMixture
-from sklearn.kernel_ridge import KernelRidge
 from sklearn.ensemble import GradientBoostingRegressor
-
+from sklearn.linear_model import Lasso
+from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import f_regression
-from sklearn.feature_selection import mutual_info_regression
 
 import utils
 
 warnings.filterwarnings("ignore")
 
 IMP_NN = 32
-GM_COMPONENTS = 120
+GM_COMPONENTS = 10
 PERC_THRESHOLD = 10
 LASSO_ALPHA = 5
 GBR_ESTIMATORS = 200
@@ -49,12 +38,10 @@ def cross_validation_gmm_components(
         score = 0
         print(f"Components: {components}")
         for train_index, test_index in kf.split(x_train):
-            x_train_cv, x_test_cv, y_train_cv, y_test_cv = get_split_from_index(
+            x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
                 x_train, y_train, train_index, test_index
             )
-            gm = utils.train_outlier_detection_model(
-                x_train_cv, n_components=components
-            )
+            gm = utils.train_outlier_detection_model(x_train_cv, n_components=components)
 
             mask = utils.get_outlier_mask(x_train_cv, gm, threshold)
             x_train_cv = x_train_cv[np.nonzero(mask)[0]]
@@ -88,9 +75,7 @@ def cross_validation_gmm_threshold(
     models = []
     for train_index, test_index in kf.split(x_train):
         x_train_cv = x_train[train_index]
-        models.append(
-            utils.train_outlier_detection_model(x_train_cv, n_components=n_components)
-        )
+        models.append(utils.train_outlier_detection_model(x_train_cv, n_components=n_components))
 
     for threshold in range(begin, end, step):
         score = 0
@@ -182,7 +167,9 @@ def cross_validation_feature_selection(
 if __name__ == "__main__":
 
     # Load data
-    x_train, test, test_id, y_train = utils.load_data(use_imp_data=True)
+    x_train, test, test_id, y_train = utils.load_data(
+        use_imp_data=False, gm_components=GM_COMPONENTS
+    )
     print("Data loaded")
 
     # Normalize data
@@ -221,9 +208,7 @@ if __name__ == "__main__":
 
     feature_selection_scores = cross_validation_feature_selection(x_train, y_train)
     print("Finished cross validation for feature selection")
-    best_num_of_features = feature_selection_scores[
-        max(feature_selection_scores.keys())
-    ]
+    best_num_of_features = feature_selection_scores[max(feature_selection_scores.keys())]
     print(f"Best model has {best_num_of_features} features")
     quit()
 
@@ -255,9 +240,7 @@ if __name__ == "__main__":
             x_train = np.delete(x_train, idx, 1)
             x_test = np.delete(x_test, idx, 1)
 
-        clf = GradientBoostingRegressor(
-            loss="squared_error", n_estimators=GBR_ESTIMATORS
-        )
+        clf = GradientBoostingRegressor(loss="squared_error", n_estimators=GBR_ESTIMATORS)
         clf.fit(x_train, y_train)
 
         print(f"New column count: {len(coef)}")

@@ -1,19 +1,16 @@
-import os
 import json
+import os
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_regression
+from sklearn.impute import IterativeImputer
 from sklearn.metrics import r2_score
 from sklearn.mixture import GaussianMixture
 
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import f_regression
-from sklearn.feature_selection import mutual_info_regression
+enable_iterative_imputer
 
 
 def dump_scores_to_file(scores, path):
@@ -37,14 +34,12 @@ def safe_cross_scores(score_map):
 
 
 def get_imputer(x_train, k_neighbors, max_iter=10):
-    imp = IterativeImputer(
-        max_iter=max_iter, n_nearest_features=k_neighbors, random_state=0
-    )
+    imp = IterativeImputer(max_iter=max_iter, n_nearest_features=k_neighbors, random_state=0)
     imp.fit(x_train)
     return imp
 
 
-def load_data(use_imp_data=False, safe_imp_data=True):
+def load_data(use_imp_data=False, safe_imp_data=True, gm_components=10):
     if use_imp_data:
         x_train_imp = pd.read_csv("data/x_train_imp.csv")
         test_imp = pd.read_csv("data/test_imp.csv")
@@ -63,7 +58,7 @@ def load_data(use_imp_data=False, safe_imp_data=True):
         id = test["id"].to_numpy()
         test = test.drop("id", axis=1)
 
-        imp = get_imputer(x_train)
+        imp = get_imputer(x_train, gm_components)
         x_train_imp = imp.transform(x_train)
         test_imp = imp.transform(test)
 
@@ -125,9 +120,7 @@ def get_f_selector(x_train, y_train, k, score_func):
     return f_selector
 
 
-def select_features(
-    x_train, y_train, x_test, k, score_func=None, use_mutual_info=False
-):
+def select_features(x_train, y_train, x_test, k, score_func=None, use_mutual_info=False):
 
     if use_mutual_info and score_func is None:
         score_func = mutual_info_regression
