@@ -1,25 +1,14 @@
 import os
 import warnings
-import json
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
 from sklearn import preprocessing
-from sklearn.feature_selection import VarianceThreshold
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import Ridge, Lasso
-from sklearn.metrics import r2_score
-from sklearn.model_selection import train_test_split
-from sklearn.mixture import GaussianMixture
-from sklearn.kernel_ridge import KernelRidge
 from sklearn.ensemble import GradientBoostingRegressor
-
+from sklearn.linear_model import Lasso
+from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import f_regression
-from sklearn.feature_selection import mutual_info_regression
 
 import utils
 
@@ -57,7 +46,7 @@ def cross_validation_gmm_components(
         score = 0
         print(f"Components: {components}")
         for train_index, test_index in kf.split(x_train):
-            x_train_cv, x_test_cv, y_train_cv, y_test_cv = get_split_from_index(
+            x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
                 x_train, y_train, train_index, test_index
             )
             gm = utils.train_outlier_detection_model(
