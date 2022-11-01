@@ -25,12 +25,20 @@ import utils
 
 warnings.filterwarnings("ignore")
 
-IMP_NN = 32
 GM_COMPONENTS = 120
 PERC_THRESHOLD = 10
-LASSO_ALPHA = 5
 GBR_ESTIMATORS = 200
-D_COLS_ROUND = 16
+
+
+# def cross_validation_regression_num_dim(
+#     x_train,
+#     y_train,
+#     num_of_splits=5,
+#     regressor_steps=GBR_ESTIMATORS,
+#     begin=10,
+#     end=200,
+#     step=10,
+# ):
 
 
 def cross_validation_gmm_components(
@@ -121,6 +129,8 @@ def cross_validation_regression_num_regressors(
     y_train,
     num_of_splits=5,
     regressor_steps=GBR_ESTIMATORS,
+    threshold=PERC_THRESHOLD,
+    n_components=GM_COMPONENTS,
     begin=100,
     end=1000,
     step=50,
@@ -134,6 +144,10 @@ def cross_validation_regression_num_regressors(
             x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
                 x_train, y_train, train_index, test_index
             )
+            x_train_cv, y_train_cv = utils.filter_outliers(
+                x_train_cv, y_train_cv, threshold=threshold, n_components=n_components
+            )
+
             curr_score = utils.get_r2_score(
                 x_train_cv, x_test_cv, y_train_cv, y_test_cv, regressors
             )
@@ -151,8 +165,10 @@ def cross_validation_feature_selection(
     y_train,
     num_of_splits=5,
     regressor_steps=GBR_ESTIMATORS,
+    threshold=PERC_THRESHOLD,
+    n_components=GM_COMPONENTS,
     begin=10,
-    end=800,
+    end=500,
     step=10,
 ):
     scores = {}
@@ -164,8 +180,12 @@ def cross_validation_feature_selection(
             x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
                 x_train, y_train, train_index, test_index
             )
-            x_train_cv, x_test_cv = utils.select_features(
-                x_train_cv, y_train_cv, x_test_cv, features, use_mutual_info=True
+            x_train_cv, y_train_cv = utils.filter_outliers(
+                x_train_cv, y_train_cv, threshold=threshold, n_components=n_components
+            )
+
+            x_train_cv, y_train_cv = utils.select_features(
+                x_train_cv, y_train_cv, x_test_cv, features, use_mutual_info=False
             )
             curr_score = utils.get_r2_score(
                 x_train_cv, x_test_cv, y_train_cv, y_test_cv, regressor_steps
@@ -182,13 +202,14 @@ def cross_validation_feature_selection(
 if __name__ == "__main__":
 
     # Load data
-    x_train, test, test_id, y_train = utils.load_data(use_imp_data=True)
+    x_train, x_test, test_id, y_train = utils.load_data(use_imp_data=True)
     print("Data loaded")
 
     # Normalize data
+    # QuantileTransformer(output_distribution='normal', random_state=0).fit_transform(x_train)
     scaler = preprocessing.StandardScaler().fit(x_train)
     x_train = scaler.transform(x_train)
-    test = scaler.transform(test)
+    x_test = scaler.transform(x_test)
 
     # Select outlier detection model
     # component_scores = cross_validation_gmm_components(x_train, y_train)
@@ -207,7 +228,7 @@ if __name__ == "__main__":
     #     f"Filtering outliers with {best_num_of_components} components and threshold {best_threshold}%"
     # )
 
-    # x_train, y_train = filter_outliers(
+    # x_train, y_train, gm = filter_outliers(
     #     x_train, y_train, threshold=best_threshold, n_components=best_num_of_components
     # )
 
@@ -219,118 +240,21 @@ if __name__ == "__main__":
     # utils.safe_cross_scores(scores_map)
     ## Train model
 
-    feature_selection_scores = cross_validation_feature_selection(x_train, y_train)
-    print("Finished cross validation for feature selection")
-    best_num_of_features = feature_selection_scores[
-        max(feature_selection_scores.keys())
-    ]
-    print(f"Best model has {best_num_of_features} features")
-    quit()
-
-    k = x_train.shape[1] - 1
-
-    best_score = -1
-    best_columns = 0
-    columns_to_drop = []
-    component_scores = []
-    features = []
-
-    for i in range(0, k, D_COLS_ROUND):
-        model = Lasso(alpha=LASSO_ALPHA)
-        model.fit(x_train, y_train)
-        coef = model.coef_
-
-        print(f"Dropping columns: ")
-
-        for j in range(D_COLS_ROUND):
-            if i + j >= k:
-                continue
-
-            idx = np.argmin(np.abs(coef))
-            coef = np.delete(coef, idx)
-
-            columns_to_drop.append(idx)
-            dropped_column = x_train[:, [idx]]
-
-            x_train = np.delete(x_train, idx, 1)
-            x_test = np.delete(x_test, idx, 1)
-
-        clf = GradientBoostingRegressor(
-            loss="squared_error", n_estimators=GBR_ESTIMATORS
-        )
-        clf.fit(x_train, y_train)
-
-        print(f"New column count: {len(coef)}")
-        score = r2_score(y_test, clf.predict(x_test))
-        if best_score < score:
-            best_score = score
-            best_dropped_columns = i + 1
-            pd.DataFrame(x_train).to_csv("best_train.csv", index=False)
-            pd.DataFrame(x_test).to_csv("best_test.csv", index=False)
-
-        component_scores.append(score)
-        features.append(len(coef))
-
-        print("Dropped columns: {} R2 score: {}".format(i + 1, score))
-        pd.DataFrame(columns_to_drop).to_csv("columns_to_drop.csv", index=False)
-
-    plt.plot(features, component_scores)
-    plt.savefig(
-        f"runs/{IMP_NN}_{LOAD_IMP_DATA}_{GM_COMPONENTS}_{PERC_THRESHOLD}_{LASSO_ALPHA}_{GBR_ESTIMATORS}_{D_COLS_ROUND}_{best_score}.png"
+    # feature_selection_scores = cross_validation_feature_selection(x_train, y_train)
+    # print("Finished cross validation for feature selection")
+    # best_num_of_features = feature_selection_scores[
+    #     max(feature_selection_scores.keys())
+    # ]
+    # print(f"Best model has {best_num_of_features} features")
+    x_train, y_train = utils.filter_outliers(
+        x_train, y_train, threshold=PERC_THRESHOLD, n_components=GM_COMPONENTS
     )
-
-    if not os.path.exists("runs/saved_runs.csv"):
-        pd.DataFrame(
-            [
-                [
-                    IMP_NN,
-                    LOAD_IMP_DATA,
-                    GM_COMPONENTS,
-                    PERC_THRESHOLD,
-                    LASSO_ALPHA,
-                    GBR_ESTIMATORS,
-                    D_COLS_ROUND,
-                    best_score,
-                ]
-            ],
-            columns=[
-                "IMP_NN",
-                "LOAD_IMP_DATA",
-                "GM_COMPONENTS",
-                "PERC_THRESHOLD",
-                "LASSO_ALPHA",
-                "GBR_ESTIMATORS",
-                "D_COLS_ROUND",
-                "best_score",
-            ],
-        ).to_csv(
-            "runs/saved_runs.csv",
-            index=False,
-            mode="a",
-        )
-    else:
-        df = pd.read_csv("runs/saved_runs.csv")
-        pd.concat(
-            [
-                df,
-                pd.DataFrame(
-                    [
-                        IMP_NN,
-                        LOAD_IMP_DATA,
-                        GM_COMPONENTS,
-                        PERC_THRESHOLD,
-                        LASSO_ALPHA,
-                        GBR_ESTIMATORS,
-                        D_COLS_ROUND,
-                        best_score,
-                    ]
-                ),
-            ],
-            axis=1,
-        ).to_csv("runs/saved_runs.csv", index=False)
-
-    print("Best score: {}".format(best_score))
-    print("Best dropped columns: {}".format(best_dropped_columns))
+    x_train, x_test = utils.select_features(
+        x_train, y_train, x_test, 150, use_mutual_info=False
+    )
+    regressor = utils.get_regressor(x_train, y_train, GBR_ESTIMATORS)
+    y_pred = regressor.predict(x_test)
+    utils.save_submission(test_id, y_pred)
 
     # sel = VarianceThreshold(threshold=(0.95))
     # x_train = sel.fit_transform(x_train, y_train)
