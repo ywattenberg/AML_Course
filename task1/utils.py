@@ -93,9 +93,14 @@ def get_outlier_mask(x_train, gm, threshold, print_stats=False):
     return scores > perc
 
 
-def get_r2_score(x_train_cv, x_test_cv, y_train_cv, y_test_cv, regressor_steps):
+def get_regressor(x_train, y_train, regressor_steps):
     clf = GradientBoostingRegressor(loss="squared_error", n_estimators=regressor_steps)
-    clf.fit(x_train_cv, y_train_cv)
+    clf.fit(x_train, y_train)
+    return clf
+
+
+def get_r2_score(x_train_cv, x_test_cv, y_train_cv, y_test_cv, regressor_steps):
+    clf = get_regressor(x_train_cv, y_train_cv, regressor_steps)
     y_pred = clf.predict(x_test_cv)
     curr_score = r2_score(y_test_cv, y_pred)
     return curr_score
@@ -142,3 +147,10 @@ def train_outlier_detection_model(x_train, n_components):
     gm = GaussianMixture(n_components=n_components)
     gm.fit(x_train)
     return gm
+
+
+def save_submission(id, y_pred, name="submission.csv"):
+    submission = pd.DataFrame()
+    submission["id"] = id
+    submission["y"] = y_pred
+    submission.to_csv(f"{name}", index=False)
