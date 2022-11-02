@@ -1,4 +1,5 @@
 import os
+from re import T
 import warnings
 
 import matplotlib.pyplot as plt
@@ -14,9 +15,11 @@ import utils
 
 warnings.filterwarnings("ignore")
 
-GM_COMPONENTS = 120
+GM_COMPONENTS = 10
 PERC_THRESHOLD = 10
 GBR_ESTIMATORS = 200
+PCA_COMPONENTS = 30
+NUM_FEATURES = "all"
 
 
 # def cross_validation_regression_num_dim(
@@ -30,32 +33,40 @@ GBR_ESTIMATORS = 200
 # ):
 
 
-def cross_validation_gmm_components(
+def cross_validation_pca_num_dimensions(
     x_train,
     y_train,
     num_of_splits=5,
     regressor_steps=GBR_ESTIMATORS,
     threshold=PERC_THRESHOLD,
+    n_components=GM_COMPONENTS,
     begin=10,
     end=200,
     step=10,
 ):
     scores = {}
     kf = KFold(n_splits=num_of_splits, shuffle=True)
+
     for components in range(begin, end, step):
         score = 0
         print(f"Components: {components}")
-        for train_index, test_index in kf.split(x_train):
+        for idx, (train_index, test_index) in enumerate(kf.split(x_train)):
+
             x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
                 x_train, y_train, train_index, test_index
             )
-            gm = utils.train_outlier_detection_model(
-                x_train_cv, n_components=components
+
+            pca = utils.train_pca_model(x_train_cv, n_components=components)
+            x_train_cv = pca.transform(x_train_cv)
+            x_test_cv = pca.transform(x_test_cv)
+
+            x_train_cv, y_train_cv = utils.filter_outliers(
+                x_train_cv, y_train_cv, n_components=n_components, threshold=threshold
             )
 
-            mask = utils.get_outlier_mask(x_train_cv, gm, threshold)
-            x_train_cv = x_train_cv[np.nonzero(mask)[0]]
-            y_train_cv = y_train_cv[np.nonzero(mask)[0]]
+            # x_train_cv, x_test_cv = utils.select_features(
+            #     x_train_cv, y_train_cv, x_test_cv, 'all'
+            # )
 
             curr_score = utils.get_r2_score(
                 x_train_cv, x_test_cv, y_train_cv, y_test_cv, regressor_steps
@@ -69,13 +80,129 @@ def cross_validation_gmm_components(
     return scores
 
 
-def cross_validation_gmm_threshold(
+def cross_validation_gmm_components(
     x_train,
     y_train,
     num_of_splits=5,
     regressor_steps=GBR_ESTIMATORS,
     threshold=PERC_THRESHOLD,
     n_components=GM_COMPONENTS,
+    pca_components=PCA_COMPONENTS,
+    begin=10,
+    end=200,
+    step=10,
+):
+    scores = {}
+    kf = KFold(n_splits=num_of_splits, shuffle=True)
+    for components in range(begin, end, step):
+        score = 0
+        print(f"Components: {components}")
+        for train_index, test_index in kf.split(x_train):
+            x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
+                x_train, y_train, train_index, test_index
+            )
+            x_train_cv, y_train_cv = utils.pca_transform(
+                x_train_cv, x_test_cv, pca_components
+            )
+
+            x_train_cv, y_train_cv = utils.filter_outliers(
+                x_train_cv, y_train_cv, n_components=components, threshold=threshold
+            )
+
+            # x_train_cv, x_test_cv = utils.select_features(
+            #     x_train_cv, y_train_cv, x_test_cv, 120
+            # )
+
+            curr_score = utils.get_r2_score(
+                x_train_cv, x_test_cv, y_train_cv, y_test_cv, regressor_steps
+            )
+            score += curr_score
+            print(f"Current score {components} components: {curr_score:.4f}")
+        scores[score / num_of_splits] = components
+        print("-" * 50)
+        print(f"Final score for {components} components: {score / num_of_splits:.4f}")
+        print("-" * 50)
+    return scores
+
+
+def cross_validation(
+    x_train,
+    y_train,
+    num_of_splits=5,
+    regressor_steps=GBR_ESTIMATORS,
+):
+    columns = [
+        "num_of_pca_dims",
+        "num_of_gmm_comps",
+        "threshold",
+        "num_of_features",
+        "r2_score",
+    ]
+    scores = pd.DataFrame(columns=columns)
+    kf = KFold(n_splits=num_of_splits, shuffle=True)
+    for num_of_pca_dims in range(10, 150, 10):
+        for num_of_gmm_comps in range(1, 100, 5):
+            for threshold in range(1, 30, 1):
+                for num_of_features in range(1, num_of_pca_dims, 2):
+                    score = 0
+                    for train_index, test_index in kf.split(x_train):
+                        (
+                            x_train_cv,
+                            x_test_cv,
+                            y_train_cv,
+                            y_test_cv,
+                        ) = utils.get_split_from_index(
+                            x_train, y_train, train_index, test_index
+                        )
+
+                        x_train_cv, x_test_cv = utils.pca_transform(
+                            x_train_cv, x_test_cv, num_of_pca_dims
+                        )
+
+                        x_train_cv, y_train_cv = utils.filter_outliers(
+                            x_train_cv,
+                            y_train_cv,
+                            n_components=num_of_gmm_comps,
+                            threshold=threshold,
+                        )
+
+                        x_train_cv, x_test_cv = utils.select_features(
+                            x_train_cv, y_train_cv, x_test_cv, num_of_features
+                        )
+
+                        curr_score = utils.get_r2_score(
+                            x_train_cv,
+                            x_test_cv,
+                            y_train_cv,
+                            y_test_cv,
+                            regressor_steps,
+                        )
+                        score += curr_score
+                        curr_run = pd.DataFrame.from_dict(
+                            {
+                                "num_of_pca_dims": [num_of_pca_dims],
+                                "num_of_gmm_comps": [num_of_gmm_comps],
+                                "threshold": [threshold],
+                                "num_of_features": [num_of_features],
+                                "r2_score": [score / num_of_splits],
+                            }
+                        )
+                        print(curr_run.iloc[0, :])
+                    scores = pd.concat(
+                        [scores, curr_run],
+                        ignore_index=True,
+                    )
+                    scores.to_csv("tmp.csv", index=False)
+    return scores
+
+
+def cross_validation_gmm_threshold(
+    x_train,
+    y_train,
+    num_of_splits=5,
+    regressor_steps=GBR_ESTIMATORS,
+    n_components=GM_COMPONENTS,
+    pca_components=PCA_COMPONENTS,
     begin=0,
     end=80,
     step=5,
@@ -96,10 +223,15 @@ def cross_validation_gmm_threshold(
             x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
                 x_train, y_train, train_index, test_index
             )
+            x_train_cv, y_train_cv = utils.pca_transform(
+                x_train_cv, x_test_cv, pca_components
+            )
 
-            mask = utils.get_outlier_mask(x_train_cv, models[idx], threshold)
-            x_train_cv = x_train_cv[np.nonzero(mask)[0]]
-            y_train_cv = y_train_cv[np.nonzero(mask)[0]]
+            x_train_cv, y_train_cv = utils.filter_outliers(
+                x_train_cv, y_train_cv, n_components=n_components, threshold=threshold
+            )
+
+            # x_train_cv, x_test_cv = utils.select_features(x_train_cv, x_test_cv, 120)
 
             curr_score = utils.get_r2_score(
                 x_train_cv, x_test_cv, y_train_cv, y_test_cv, regressor_steps
@@ -120,6 +252,8 @@ def cross_validation_regression_num_regressors(
     regressor_steps=GBR_ESTIMATORS,
     threshold=PERC_THRESHOLD,
     n_components=GM_COMPONENTS,
+    pca_components=PCA_COMPONENTS,
+    num_features=NUM_FEATURES,
     begin=100,
     end=1000,
     step=50,
@@ -133,8 +267,16 @@ def cross_validation_regression_num_regressors(
             x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
                 x_train, y_train, train_index, test_index
             )
+            x_train_cv, y_train_cv = utils.pca_transform(
+                x_train_cv, x_test_cv, pca_components
+            )
+
             x_train_cv, y_train_cv = utils.filter_outliers(
                 x_train_cv, y_train_cv, threshold=threshold, n_components=n_components
+            )
+
+            x_train_cv, x_test_cv = utils.select_features(
+                x_train_cv, x_test_cv, num_features
             )
 
             curr_score = utils.get_r2_score(
@@ -156,7 +298,8 @@ def cross_validation_feature_selection(
     regressor_steps=GBR_ESTIMATORS,
     threshold=PERC_THRESHOLD,
     n_components=GM_COMPONENTS,
-    begin=10,
+    pca_components=PCA_COMPONENTS,
+    begin=5,
     end=500,
     step=10,
 ):
@@ -169,6 +312,10 @@ def cross_validation_feature_selection(
             x_train_cv, x_test_cv, y_train_cv, y_test_cv = utils.get_split_from_index(
                 x_train, y_train, train_index, test_index
             )
+            x_train_cv, y_train_cv = utils.pca_transform(
+                x_train_cv, x_test_cv, pca_components
+            )
+
             x_train_cv, y_train_cv = utils.filter_outliers(
                 x_train_cv, y_train_cv, threshold=threshold, n_components=n_components
             )
@@ -191,7 +338,7 @@ def cross_validation_feature_selection(
 if __name__ == "__main__":
 
     # Load data
-    x_train, x_test, test_id, y_train = utils.load_data(use_imp_data=True)
+    x_train, x_test, test_id, y_train = utils.load_data(use_imp_data=False)
     print("Data loaded")
 
     # Normalize data
@@ -200,60 +347,85 @@ if __name__ == "__main__":
     x_train = scaler.transform(x_train)
     x_test = scaler.transform(x_test)
 
+    scores = cross_validation(x_train, y_train)
+    scores.to_csv("scores.csv", index=False)
+    print("Done with cross validation")
+    print(print(scores[scores.score == scores.score.max()]))
+
+    quit()
+    ## ------------------ Cross validation ------------------ ##
+    pca_scores = cross_validation_pca_num_dimensions(x_train, y_train)
+    print("PCA cross validation done")
+    best_pca_components = pca_scores[max(pca_scores.keys())]
+    print(f"Best PCA components: {best_pca_components}")
+
     # Select outlier detection model
-    # component_scores = cross_validation_gmm_components(x_train, y_train)
-    # print("Finished cross validation for components")
-    # best_num_of_components = component_scores[max(component_scores.keys())]
-    # print(f"Best model has {best_num_of_components} components")
-
-    # threshold_scores = cross_validation_gmm_threshold(
-    #     x_train, y_train, n_components=best_num_of_components
-    # )
-    # print("Finished cross validation for threshold")
-    # best_threshold = threshold_scores[max(threshold_scores.keys())]
-    # print(f"Best model has {best_threshold} threshold")
-
-    # print(
-    #     f"Filtering outliers with {best_num_of_components} components and threshold {best_threshold}%"
-    # )
-
-    # x_train, y_train, gm = filter_outliers(
-    #     x_train, y_train, threshold=best_threshold, n_components=best_num_of_components
-    # )
-
-    # num_regressor_score = cross_validation_regression_num_regressors(x_train, y_train)
-    # print("Finished cross validation for number of regressors")
-    # best_num_of_regressors = num_regressor_score[max(num_regressor_score.keys())]
-    # print(f"Best model has {best_num_of_regressors} regressors")
-    # scores_map = {"component_scores":component_scores, "threshold_scores":threshold_scores, "num_regressor_score":num_regressor_score}
-    # utils.safe_cross_scores(scores_map)
-    ## Train model
-
-    # feature_selection_scores = cross_validation_feature_selection(x_train, y_train)
-    # print("Finished cross validation for feature selection")
-    # best_num_of_features = feature_selection_scores[
-    #     max(feature_selection_scores.keys())
-    # ]
-    # print(f"Best model has {best_num_of_features} features")
-    x_train, y_train = utils.filter_outliers(
-        x_train, y_train, threshold=PERC_THRESHOLD, n_components=GM_COMPONENTS
+    component_scores = cross_validation_gmm_components(
+        x_train, y_train, pca_components=best_pca_components
     )
-    x_train, x_test = utils.select_features(
-        x_train, y_train, x_test, 150, use_mutual_info=False
+    print("Finished cross validation for components")
+    best_num_of_components = component_scores[max(component_scores.keys())]
+    print(f"Best model has {best_num_of_components} components")
+
+    threshold_scores = cross_validation_gmm_threshold(
+        x_train,
+        y_train,
+        n_components=best_num_of_components,
+        pca_components=best_pca_components,
     )
-    regressor = utils.get_regressor(x_train, y_train, GBR_ESTIMATORS)
-    y_pred = regressor.predict(x_test)
-    utils.save_submission(test_id, y_pred)
+    print("Finished cross validation for threshold")
+    best_threshold = threshold_scores[max(threshold_scores.keys())]
+    print(f"Best model has {best_threshold} threshold")
 
-    # sel = VarianceThreshold(threshold=(0.95))
-    # x_train = sel.fit_transform(x_train, y_train)
-    # x_test = sel.transform(x_test)
+    feature_scores = cross_validation_feature_selection(
+        x_train,
+        y_train,
+        pca_components=best_pca_components,
+        n_components=best_num_of_components,
+        threshold=best_threshold,
+        begin=5,
+        end=best_pca_components,
+        step=5,
+    )
+    print("Finished cross validation for number of features")
+    best_num_of_features = feature_scores[max(feature_scores.keys())]
+    print(f"Best model has {best_num_of_features} features")
 
-    # clf.fit(x_train, y_train)
+    num_regressor_score = cross_validation_regression_num_regressors(
+        x_train,
+        y_train,
+        pca_components=best_pca_components,
+        n_components=best_num_of_components,
+        threshold=best_threshold,
+        num_features=best_num_of_features,
+        begin=100,
+        end=500,
+        step=50,
+    )
+    print("Finished cross validation for number of regressors")
+    best_num_of_regressors = num_regressor_score[max(num_regressor_score.keys())]
+    print(f"Best model has {best_num_of_regressors} regressors")
 
-    # create pediction file
-    # y_pred = clf.predict(imp.transform(test))
-    # pred["y"] = pd.DataFrame(y_pred, columns=["y"])
-    # pred.to_csv("data/y_pred.csv", index=False)
+    ## ------------------ Save cross validation runs ------------------ ##
 
-    # print("R2 score: {}".format(r2_score(y_test, clf.predict(x_test))))
+    scores_map = {
+        "component_scores": component_scores,
+        "threshold_scores": threshold_scores,
+        "num_regressor_score": num_regressor_score,
+        "pca_scores": pca_scores,
+        "feature_scores": feature_scores,
+    }
+    # scores_map = {"pca_scores": pca_scores}
+    utils.safe_cross_scores(scores_map)
+
+    ## ------------------ Final model ------------------ ##
+
+    # x_train, y_train = utils.filter_outliers(
+    #     x_train, y_train, threshold=PERC_THRESHOLD, n_components=GM_COMPONENTS
+    # )
+    # x_train, x_test = utils.select_features(
+    #     x_train, y_train, x_test, 150, use_mutual_info=False
+    # )
+    # regressor = utils.get_regressor(x_train, y_train, GBR_ESTIMATORS)
+    # y_pred = regressor.predict(x_test)
+    # utils.save_submission(test_id, y_pred)
