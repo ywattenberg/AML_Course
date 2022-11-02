@@ -125,13 +125,9 @@ def cross_validation_gmm_components(
     return scores
 
 
-def cross_validation(
-    x_train,
-    y_train,
-    num_of_splits=5,
-    regressor_steps=GBR_ESTIMATORS,
-):
+def cross_validation(x_train, y_train, num_of_splits=5):
     columns = [
+        "num_of_regressors",
         "num_of_pca_dims",
         "num_of_gmm_comps",
         "threshold",
@@ -139,55 +135,63 @@ def cross_validation(
         "r2_score",
     ]
     scores = pd.DataFrame(columns=columns)
+    best_run = pd.DataFrame(columns=columns)
     kf = KFold(n_splits=num_of_splits, shuffle=True)
-    for num_of_pca_dims in range(10, 150, 10):
-        for num_of_gmm_comps in range(1, 100, 5):
-            for threshold in range(1, 30, 1):
-                for num_of_features in range(1, num_of_pca_dims, 2):
-                    score = 0
-                    for train_index, test_index in kf.split(x_train):
-                        (
-                            x_train_cv,
-                            x_test_cv,
-                            y_train_cv,
-                            y_test_cv,
-                        ) = utils.get_split_from_index(
-                            x_train, y_train, train_index, test_index
-                        )
+    for num_of_regressors in range(100, 500, 50):
+        for num_of_pca_dims in range(10, 150, 10):
+            for num_of_gmm_comps in range(1, 100, 5):
+                for threshold in range(1, 30, 1):
+                    for num_of_features in range(1, num_of_pca_dims, 2):
+                        score = 0
+                        for train_index, test_index in kf.split(x_train):
+                            (
+                                x_train_cv,
+                                x_test_cv,
+                                y_train_cv,
+                                y_test_cv,
+                            ) = utils.get_split_from_index(
+                                x_train, y_train, train_index, test_index
+                            )
 
-                        x_train_cv, x_test_cv = utils.pca_transform(
-                            x_train_cv, x_test_cv, num_of_pca_dims
-                        )
+                            x_train_cv, x_test_cv = utils.pca_transform(
+                                x_train_cv, x_test_cv, num_of_pca_dims
+                            )
 
-                        x_train_cv, y_train_cv = utils.filter_outliers(
-                            x_train_cv,
-                            y_train_cv,
-                            n_components=num_of_gmm_comps,
-                            threshold=threshold,
-                        )
+                            x_train_cv, y_train_cv = utils.filter_outliers(
+                                x_train_cv,
+                                y_train_cv,
+                                n_components=num_of_gmm_comps,
+                                threshold=threshold,
+                            )
 
-                        x_train_cv, x_test_cv = utils.select_features(
-                            x_train_cv, y_train_cv, x_test_cv, num_of_features
-                        )
+                            x_train_cv, x_test_cv = utils.select_features(
+                                x_train_cv, y_train_cv, x_test_cv, num_of_features
+                            )
 
-                        curr_score = utils.get_r2_score(
-                            x_train_cv,
-                            x_test_cv,
-                            y_train_cv,
-                            y_test_cv,
-                            regressor_steps,
-                        )
-                        score += curr_score
-                        curr_run = pd.DataFrame.from_dict(
-                            {
-                                "num_of_pca_dims": [num_of_pca_dims],
-                                "num_of_gmm_comps": [num_of_gmm_comps],
-                                "threshold": [threshold],
-                                "num_of_features": [num_of_features],
-                                "r2_score": [score / num_of_splits],
-                            }
-                        )
-                        print(curr_run.iloc[0, :])
+                            curr_score = utils.get_r2_score(
+                                x_train_cv,
+                                x_test_cv,
+                                y_train_cv,
+                                y_test_cv,
+                                num_of_regressors,
+                            )
+                            score += curr_score
+                            curr_run = pd.DataFrame.from_dict(
+                                {
+                                    "num_of_regressors": [num_of_regressors],
+                                    "num_of_pca_dims": [num_of_pca_dims],
+                                    "num_of_gmm_comps": [num_of_gmm_comps],
+                                    "threshold": [threshold],
+                                    "num_of_features": [num_of_features],
+                                    "r2_score": [score / num_of_splits],
+                                }
+                            )
+                            print(pd.concat([best_run, curr_run]).iloc[:, :])
+                            if (
+                                best_run.empty
+                                or curr_run.iloc[0, -1] > best_run.iloc[0, -1]
+                            ):
+                                best_run = curr_run
                     scores = pd.concat(
                         [scores, curr_run],
                         ignore_index=True,
