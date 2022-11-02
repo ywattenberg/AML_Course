@@ -137,11 +137,11 @@ def cross_validation(x_train, y_train, num_of_splits=5):
     scores = pd.DataFrame(columns=columns)
     best_run = pd.DataFrame(columns=columns)
     kf = KFold(n_splits=num_of_splits, shuffle=True)
-    for num_of_regressors in range(100, 500, 50):
-        for num_of_pca_dims in range(10, 150, 10):
-            for num_of_gmm_comps in range(1, 100, 5):
-                for threshold in range(1, 30, 1):
-                    for num_of_features in range(1, num_of_pca_dims, 2):
+    for num_of_regressors in range(100, 400, 100):
+        for num_of_pca_dims in [20, 30, 50, 100, 150]:
+            for num_of_gmm_comps in [1,5,10,50,100]:
+                for threshold in [1,5,10,15]:
+                    for num_of_features in range(10, num_of_pca_dims+1, int(num_of_pca_dims / 5)):
                         score = 0
                         for train_index, test_index in kf.split(x_train):
                             (
