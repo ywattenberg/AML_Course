@@ -186,12 +186,12 @@ def cross_validation(x_train, y_train, num_of_splits=5):
                                     "r2_score": [score / num_of_splits],
                                 }
                             )
-                            print(pd.concat([best_run, curr_run]).iloc[:, :])
-                            if (
-                                best_run.empty
-                                or curr_run.iloc[0, -1] > best_run.iloc[0, -1]
-                            ):
-                                best_run = curr_run
+                        print(pd.concat([best_run, curr_run]))
+                        if (
+                            best_run.empty
+                            or curr_run.iloc[0, -1] > best_run.iloc[0, -1]
+                        ):
+                            best_run = curr_run
                     scores = pd.concat(
                         [scores, curr_run],
                         ignore_index=True,
