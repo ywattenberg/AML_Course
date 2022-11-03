@@ -9,7 +9,7 @@ from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_reg
 from sklearn.decomposition import PCA
 from sklearn.impute import IterativeImputer
 from sklearn.metrics import r2_score
-from sklearn.mixture import GaussianMixture
+from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
 
 enable_iterative_imputer
 
@@ -153,7 +153,8 @@ def select_features(
 
 
 def train_outlier_detection_model(x_train, n_components):
-    gm = GaussianMixture(n_components=n_components)
+    gm = BayesianGaussianMixture(n_components=n_components)
+    #gm = GaussianMixture(n_components=n_components)
     gm.fit(x_train)
     return gm
 
