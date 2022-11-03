@@ -10,6 +10,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.linear_model import Lasso
 from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
+from sklearn.preprocessing import QuantileTransformer
 
 import utils
 
@@ -137,7 +138,7 @@ def cross_validation(x_train, y_train, num_of_splits=5):
     scores = pd.DataFrame(columns=columns)
     best_run = pd.DataFrame(columns=columns)
     kf = KFold(n_splits=num_of_splits, shuffle=True)
-    for num_of_regressors in range(100, 400, 100):
+    for num_of_regressors in [500, 700, 1000]:
         for num_of_pca_dims in [20, 30, 50, 100, 150]:
             for num_of_gmm_comps in [1,5,10,50,100]:
                 for threshold in [1,5,10,15]:
@@ -196,7 +197,7 @@ def cross_validation(x_train, y_train, num_of_splits=5):
                         [scores, curr_run],
                         ignore_index=True,
                     )
-                    scores.to_csv("tmp.csv", index=False)
+                    scores.to_csv("tmp_q.csv", index=False)
     return scores
 
 
@@ -346,15 +347,14 @@ if __name__ == "__main__":
     print("Data loaded")
 
     # Normalize data
-    # QuantileTransformer(output_distribution='normal', random_state=0).fit_transform(x_train)
-    scaler = preprocessing.StandardScaler().fit(x_train)
+    scaler =  QuantileTransformer(output_distribution='normal', random_state=0).fit(x_train)
     x_train = scaler.transform(x_train)
     x_test = scaler.transform(x_test)
 
     scores = cross_validation(x_train, y_train)
-    scores.to_csv("scores.csv", index=False)
+    scores.to_csv("scores_quant.csv", index=False)
     print("Done with cross validation")
-    print(print(scores[scores.score == scores.score.max()]))
+    print(print(scores[scores.r2_score == scores.r2_score.max()]))
 
     quit()
     ## ------------------ Cross validation ------------------ ##
