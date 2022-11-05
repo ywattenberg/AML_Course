@@ -7,7 +7,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_regression
 from sklearn.decomposition import PCA
-from sklearn.impute import IterativeImputer
+from sklearn.impute import IterativeImputer, SimpleImputer
 from sklearn.metrics import r2_score
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
 
@@ -46,9 +46,7 @@ def safe_cross_scores(score_map):
 
 
 def get_imputer(x_train, k_neighbors, max_iter=10):
-    imp = IterativeImputer(
-        max_iter=max_iter, n_nearest_features=k_neighbors, random_state=0
-    )
+    imp = SimpleImputer(strategy="median")
     imp.fit(x_train)
     return imp
 

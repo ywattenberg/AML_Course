@@ -16,11 +16,11 @@ import utils
 
 warnings.filterwarnings("ignore")
 
-GM_COMPONENTS = 10
+GM_COMPONENTS = 1
 PERC_THRESHOLD = 10
-GBR_ESTIMATORS = 200
+GBR_ESTIMATORS = 1000
 PCA_COMPONENTS = 30
-NUM_FEATURES = "all"
+NUM_FEATURES = 150
 
 
 # def cross_validation_regression_num_dim(
@@ -138,11 +138,11 @@ def cross_validation(x_train, y_train, num_of_splits=5):
     scores = pd.DataFrame(columns=columns)
     best_run = pd.DataFrame(columns=columns)
     kf = KFold(n_splits=num_of_splits, shuffle=True)
-    for num_of_regressors in [100, 500, 700, 1000]:
+    for num_of_regressors in [1500]:
         for num_of_pca_dims in [0]:
-            for num_of_gmm_comps in [10,50,100,150,200]:
+            for num_of_gmm_comps in [100,150,200]:
                 for threshold in [1,5,10,15]:
-                    for num_of_features in [10,50,100,150,200]:
+                    for num_of_features in [150,200]:
                         score = 0
                         for train_index, test_index in kf.split(x_train):
                             (
@@ -197,7 +197,7 @@ def cross_validation(x_train, y_train, num_of_splits=5):
                         [scores, curr_run],
                         ignore_index=True,
                     )
-                    scores.to_csv("tmp_m_no_pca.csv", index=False)
+                    scores.to_csv("tmp_median2.csv", index=False)
     return scores
 
 
@@ -341,7 +341,6 @@ def cross_validation_feature_selection(
 
 
 if __name__ == "__main__":
-
     # Load data
     x_train, x_test, test_id, y_train = utils.load_data(use_imp_data=False)
     print("Data loaded")
@@ -351,10 +350,20 @@ if __name__ == "__main__":
     x_train = scaler.transform(x_train)
     x_test = scaler.transform(x_test)
 
-    scores = cross_validation(x_train, y_train)
-    scores.to_csv("scores_baysian_no_pca.csv", index=False)
-    print("Done with cross validation")
-    print(print(scores[scores.r2_score == scores.r2_score.max()]))
+    # scores = cross_validation(x_train, y_train)
+    # scores.to_csv("scores_median2.csv", index=False)
+    # print("Done with cross validation")
+    # print(print(scores[scores.r2_score == scores.r2_score.max()]))
+
+    x_train, y_train = utils.filter_outliers(
+        x_train, y_train, threshold=PERC_THRESHOLD, n_components=GM_COMPONENTS
+    )
+    x_train, x_test = utils.select_features(
+        x_train, y_train, x_test, NUM_FEATURES, use_mutual_info=False
+    )
+    regressor = utils.get_regressor(x_train, y_train, GBR_ESTIMATORS)
+    y_pred = regressor.predict(x_test)
+    utils.save_submission(test_id, y_pred)
 
     quit()
     ## ------------------ Cross validation ------------------ ##
