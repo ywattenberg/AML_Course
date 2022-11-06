@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.impute import IterativeImputer, SimpleImputer
 from sklearn.metrics import r2_score
 from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
+from sklearn.neighbors import LocalOutlierFactor
 
 enable_iterative_imputer
 
@@ -124,11 +125,20 @@ def get_split_from_index(x_train, y_train, train_index, test_index):
     y_train_cv, y_test_cv = y_train[train_index], y_train[test_index]
     return x_train_cv, x_test_cv, y_train_cv, y_test_cv
 
-
-def filter_outliers(x_train, y_train, threshold, n_components):
-    gm = train_outlier_detection_model(x_train, n_components=n_components)
-    mask = get_outlier_mask(x_train, gm, threshold)
+#added an optinal parameter loacl_outlier_factor, if set to true, the local outlier factor is used instead of gmm or bgm
+def filter_outliers(x_train, y_train, threshold, n_components, local_outlier_factor=False):
+    if not local_outlier_factor:
+        gm = train_outlier_detection_model(x_train, n_components=n_components)
+        mask = get_outlier_mask(x_train, gm, threshold)
+    else:
+        mask = train_local_outlier_factor(x_train=x_train, n_neighbors=n_components)
     return x_train[np.nonzero(mask)[0]], y_train[np.nonzero(mask)[0]]
+
+# Function to train the local outlier factor model
+def train_local_outlier_factor(x_train, n_neighbors):
+    lof = LocalOutlierFactor(n_neighbors=n_neighbors)
+    mask = lof.fit_predict(x_train)
+    return mask == 1
 
 
 def get_f_selector(x_train, y_train, k, score_func):

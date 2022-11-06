@@ -125,8 +125,8 @@ def cross_validation_gmm_components(
         print("-" * 50)
     return scores
 
-
-def cross_validation(x_train, y_train, num_of_splits=5):
+#added an optinal parameter loacl_outlier_factor, if set to true, the local outlier factor is used instead of gmm or bgm
+def cross_validation(x_train, y_train, num_of_splits=5, local_outlier_factor=False):
     columns = [
         "num_of_regressors",
         "num_of_pca_dims",
@@ -138,11 +138,11 @@ def cross_validation(x_train, y_train, num_of_splits=5):
     scores = pd.DataFrame(columns=columns)
     best_run = pd.DataFrame(columns=columns)
     kf = KFold(n_splits=num_of_splits, shuffle=True)
-    for num_of_regressors in [1500]:
+    for num_of_regressors in [500, 700, 1000]:
         for num_of_pca_dims in [0]:
-            for num_of_gmm_comps in [100,150,200]:
-                for threshold in [1,5,10,15]:
-                    for num_of_features in [150,200]:
+            for num_of_gmm_comps in [20, 30, 50]: # if local outlier factor is used, this parameter is used to specify the number of neighbors which are considered
+                for threshold in [0]:
+                    for num_of_features in [100,150,200]:
                         score = 0
                         for train_index, test_index in kf.split(x_train):
                             (
@@ -163,6 +163,7 @@ def cross_validation(x_train, y_train, num_of_splits=5):
                                 y_train_cv,
                                 n_components=num_of_gmm_comps,
                                 threshold=threshold,
+                                local_outlier_factor=local_outlier_factor
                             )
 
                             x_train_cv, x_test_cv = utils.select_features(
@@ -193,11 +194,11 @@ def cross_validation(x_train, y_train, num_of_splits=5):
                             or curr_run.iloc[0, -1] > best_run.iloc[0, -1]
                         ):
                             best_run = curr_run
-                    scores = pd.concat(
-                        [scores, curr_run],
-                        ignore_index=True,
-                    )
-                    scores.to_csv("tmp_median2.csv", index=False)
+                        scores = pd.concat(
+                            [scores, curr_run],
+                            ignore_index=True,
+                        )
+                        scores.to_csv("tmp_median2.csv", index=False)
     return scores
 
 
@@ -350,20 +351,20 @@ if __name__ == "__main__":
     x_train = scaler.transform(x_train)
     x_test = scaler.transform(x_test)
 
-    # scores = cross_validation(x_train, y_train)
-    # scores.to_csv("scores_median2.csv", index=False)
-    # print("Done with cross validation")
-    # print(print(scores[scores.r2_score == scores.r2_score.max()]))
+    scores = cross_validation(x_train, y_train, local_outlier_factor=True)
+    scores.to_csv("scores_local_outlier_factor.csv", index=False)
+    print("Done with cross validation")
+    print(print(scores[scores.r2_score == scores.r2_score.max()]))
 
-    x_train, y_train = utils.filter_outliers(
-        x_train, y_train, threshold=PERC_THRESHOLD, n_components=GM_COMPONENTS
-    )
-    x_train, x_test = utils.select_features(
-        x_train, y_train, x_test, NUM_FEATURES, use_mutual_info=False
-    )
-    regressor = utils.get_regressor(x_train, y_train, GBR_ESTIMATORS)
-    y_pred = regressor.predict(x_test)
-    utils.save_submission(test_id, y_pred)
+    # x_train, y_train = utils.filter_outliers(
+    #     x_train, y_train, threshold=PERC_THRESHOLD, n_components=GM_COMPONENTS
+    # )
+    # x_train, x_test = utils.select_features(
+    #     x_train, y_train, x_test, NUM_FEATURES, use_mutual_info=False
+    # )
+    # regressor = utils.get_regressor(x_train, y_train, GBR_ESTIMATORS)
+    # y_pred = regressor.predict(x_test)
+    # utils.save_submission(test_id, y_pred)
 
     quit()
     ## ------------------ Cross validation ------------------ ##
