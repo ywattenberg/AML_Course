@@ -1,2 +1,5 @@
 venv
+.venv
 .ipynb*
+__pycache__
+.DS_Store
