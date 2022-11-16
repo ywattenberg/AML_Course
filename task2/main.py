@@ -13,10 +13,10 @@ def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     for batch, (x, y) in enumerate(dataloader):
         # print(x.size())
-        pred = model(x).type(torch.float)
-        pred = torch.squeeze(pred, 1)
-        y = torch.tensor(y, dtype=torch.int)
-        loss = loss_fn(pred, y)
+        pred = model(x)
+        print(pred.size())
+        print(y.squeeze(1).size())
+        loss = loss_fn(pred, y.squeeze(1))
 
         optimizer.zero_grad()
         loss.backward()

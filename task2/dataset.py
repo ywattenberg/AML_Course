@@ -8,8 +8,8 @@ import torch
 
 class TrainDataset(Dataset):
     def __init__(self, feature_path, label_path):
-        self.features = pd.read_csv(feature_path)
-        self.labels = pd.read_csv(label_path)
+        self.features = pd.read_csv(feature_path).iloc[:, 1:]
+        self.labels = pd.read_csv(label_path).iloc[:, 1:]
         # print(self.labels)
 
     def __len__(self):

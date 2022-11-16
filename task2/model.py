@@ -1,4 +1,12 @@
-from torch.nn import Module, Linear, ReLU, Sequential, Conv2d, MaxPool2d, Flatten, Dropout, Sigmoid
+from torch.nn import (
+    Module,
+    Linear,
+    ReLU,
+    Sequential,
+    Dropout,
+    Sigmoid,
+    Softmax,
+)
 
 
 class Model(Module):
@@ -17,6 +25,7 @@ class Model(Module):
             Dropout(0.5),
             Linear(256, 4),
             Sigmoid(),
+            Softmax(),
         )
 
     def forward(self, x):
