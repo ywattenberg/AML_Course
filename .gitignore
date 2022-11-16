@@ -3,3 +3,4 @@ venv
 .ipynb*
 __pycache__
 .DS_Store
+task2/data/*.csv
