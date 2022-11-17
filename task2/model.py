@@ -25,7 +25,6 @@ class Model(Module):
             Dropout(0.5),
             Linear(256, 4),
             Sigmoid(),
-            Softmax(),
         )
 
     def forward(self, x):
