@@ -3,3 +3,4 @@ numpy>=1.22.0
 scikit-image
 scikit-learn
 matplotlib
+biosppy
