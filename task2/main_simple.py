@@ -51,7 +51,7 @@ def main():
     # X_test_con = np.concatenate((X_test_1, X_test_2), axis=1)
     # print("concatenate done")
 
-    # y_train = y_train["y"].to_numpy().flatten()
+    y_train = y_train["y"].to_numpy().flatten()
 
     # pd.DataFrame(X_train_1).to_csv("data/X_train_1.csv", index=False)
     # pd.DataFrame(X_test_1).to_csv("data/X_test_1.csv", index=False)
