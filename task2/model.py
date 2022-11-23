@@ -27,20 +27,18 @@ class Model(Module):
             MaxPool1d(
                 kernel_size=5, stride=1
             ),  # out_dim = num_of_features-4-5 + 1 x 32 = (num_of_features-9)/2 + 1 x 32
-            Dropout(0.2),
             Conv1d(
                 in_channels=25, out_channels=25, kernel_size=16
             ),  # out_dim = num_of_features -8 - 4 x 32
-            Conv1d(in_channels=25, out_channels=25, kernel_size=16),
+            Conv1d(in_channels=25, out_channels=5, kernel_size=16),
             MaxPool1d(
-                kernel_size=5, stride=1
+                kernel_size=16, stride=1
             ),  # out_dim = num_of_features-12 -4 x 32 = num_of_features-16 x 32
-            Dropout(0.2),
         )
 
         self.linear = Sequential(
-            Flatten,
-            Linear(3200 * 17739, 5000),
+            Flatten(),
+            Linear(88640, 5000),
             ReLU(),
             Dropout(0.2),
             Linear(5000, 5000),

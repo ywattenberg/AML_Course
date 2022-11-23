@@ -3,20 +3,23 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from torch.nn import CrossEntropyLoss
-from torch.nn import Softmax
 
 import utils
 import dataset
 import model
 
+device = "mps"
+
 
 def train_loop(dataloader, model, loss_fn, optimizer):
-    sm = Softmax(dim=1)
+
     size = len(dataloader.dataset)
     for batch, (x, y) in enumerate(dataloader):
+        x.to(device)
+        y.to(device)
         pred = model(x).type(torch.float)
         # print("pred: ", pred)
-        pred_sm = sm(pred.squeeze(1))
+        pred_sm = torch.softmax(pred.squeeze(1), dim=1)
         y = y.long()
         # print(pred)
         # print(y.squeeze(1))
@@ -40,15 +43,15 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 def test_loop(dataloader, model, loss_fn):
     predicition = [0, 0, 0, 0]
-    sm = Softmax(dim=1)
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss, correct = 0, 0
-
     with torch.no_grad():
         for (x, y) in dataloader:
-            pred = model(x).type(torch.float)
-            pred_sm = sm(pred.squeeze(1))
+            x.to(device)
+            y.to(device)
+            pred = model(x).type(torch.float).to(device)
+            pred_sm = torch.softmax(pred.squeeze(1), dim=1)
             loss = loss_fn(pred_sm, y.squeeze(1).long())
             test_loss += loss
             correct += (pred_sm.argmax(1) == y).type(torch.float).sum().item()
