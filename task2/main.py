@@ -15,12 +15,18 @@ def train_loop(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     for batch, (x, y) in enumerate(dataloader):
         pred = model(x).type(torch.float)
-        pred_sm = sm(pred)
+        # print("pred: ", pred)
+        pred_sm = sm(pred.squeeze(1))
         y = y.long()
         # print(pred)
         # print(y.squeeze(1))
         # print(type(pred_sm))
         # print(type(y.squeeze(1)))
+        # print(pred_sm.shape)
+        # print(pred_sm)
+        # print(pred_sm.shape)
+        # pred_sm = pred_sm.squeeze(1)
+        # print(pred_sm.argmax(1))
         loss = loss_fn(pred_sm, y.squeeze(1))
 
         optimizer.zero_grad()
@@ -29,10 +35,11 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
         if batch % 10 == 0:
             loss, current = loss.item(), batch * len(x) * 3
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {loss:>7f}  [{current:>5d} /{size:>5d}]")
 
 
 def test_loop(dataloader, model, loss_fn):
+    predicition = [0, 0, 0, 0]
     sm = Softmax(dim=1)
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -41,15 +48,22 @@ def test_loop(dataloader, model, loss_fn):
     with torch.no_grad():
         for (x, y) in dataloader:
             pred = model(x).type(torch.float)
-            pred_sm = sm(pred)
-
-            loss = loss_fn(pred_sm, y.long().squeeze(1))
+            pred_sm = sm(pred.squeeze(1))
+            loss = loss_fn(pred_sm, y.squeeze(1).long())
             test_loss += loss
             correct += (pred_sm.argmax(1) == y).type(torch.float).sum().item()
+
+            preds = pred_sm.argmax(1)
+
+            for pred in preds.int():
+                print(pred)
+                print(type(pred))
+                predicition[int(pred)] += 1
 
     test_loss /= num_batches
     correct /= size
     print(f"Test Error \n Accuracy: {(100 * correct):>1f}%, Avg loss: {test_loss:>8f}")
+    print(predicition)
 
 
 if __name__ == "__main__":
@@ -71,7 +85,7 @@ if __name__ == "__main__":
 
     nn_model = model.Model(num_of_features=num_of_features)
     loss = CrossEntropyLoss()
-    optimizer = torch.optim.Adam(nn_model.parameters(), lr=1e-3, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(nn_model.parameters(), lr=1e-4, weight_decay=1e-5)
 
     epochs = 100
 

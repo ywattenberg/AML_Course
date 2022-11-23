@@ -8,7 +8,8 @@ from torch.nn import (
     Softmax,
     Conv1d,
     AvgPool1d,
-    MaxPool1d
+    MaxPool1d,
+    Flatten,
 )
 
 
@@ -19,18 +20,27 @@ class Model(Module):
         self.num_of_features = num_of_features
 
         self.conv = Sequential(
-            Conv1d(in_channels=1, out_channels=32, kernel_size=5),  # out_dim = (num_of_features-5+1) x 32 = num_of_features-4 x 32
-            ReLU(),
-            MaxPool1d(kernel_size=5, stride=1),  # out_dim = num_of_features-4-5 + 1 x 32 = (num_of_features-9)/2 + 1 x 32
+            Conv1d(
+                in_channels=1, out_channels=5, kernel_size=16
+            ),  # out_dim = (num_of_features-5+1) x 32 = num_of_features-4 x 32
+            Conv1d(in_channels=5, out_channels=25, kernel_size=16),
+            MaxPool1d(
+                kernel_size=5, stride=1
+            ),  # out_dim = num_of_features-4-5 + 1 x 32 = (num_of_features-9)/2 + 1 x 32
             Dropout(0.2),
-            Conv1d(in_channels=32, out_channels=32, kernel_size=5), # out_dim = num_of_features -8 - 4 x 32
-            ReLU(),
-            MaxPool1d(kernel_size=5, stride=1), # out_dim = num_of_features-12 -4 x 32 = num_of_features-16 x 32
+            Conv1d(
+                in_channels=25, out_channels=25, kernel_size=16
+            ),  # out_dim = num_of_features -8 - 4 x 32
+            Conv1d(in_channels=25, out_channels=25, kernel_size=16),
+            MaxPool1d(
+                kernel_size=5, stride=1
+            ),  # out_dim = num_of_features-12 -4 x 32 = num_of_features-16 x 32
             Dropout(0.2),
         )
 
         self.linear = Sequential(
-            Linear(num_of_features - 16 - ((num_of_features+1)%2), 5000),
+            Flatten,
+            Linear(3200 * 17739, 5000),
             ReLU(),
             Dropout(0.2),
             Linear(5000, 5000),
@@ -40,7 +50,7 @@ class Model(Module):
             ReLU(),
             Dropout(0.2),
             Linear(1024, 4),
-            Sigmoid()
+            Sigmoid(),
         )
         # self.nn = Sequential(
         #     #1-d signal --> in_channel=1, cannot be changed in the first conv
@@ -66,6 +76,11 @@ class Model(Module):
         # )
 
     def forward(self, x):
-        x_tmp = self.conv().flatten()
+        # print(x.shape)
+        x = x.view(-1, 1, self.num_of_features)
+        # print(x.shape)
+        x_tmp = self.conv(x)
+        # .reshape(
+        #     64, self.num_of_features - 16 - ((self.num_of_features + 1) % 2)
+        # )
         return self.linear(x_tmp)
-  
