@@ -15,8 +15,8 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
     size = len(dataloader.dataset)
     for batch, (x, y) in enumerate(dataloader):
-        x.to(device)
-        y.to(device)
+        # x.to(device)
+        # y.to(device)
         pred = model(x).type(torch.float)
         # print("pred: ", pred)
         pred_sm = torch.softmax(pred.squeeze(1), dim=1)
@@ -48,8 +48,8 @@ def test_loop(dataloader, model, loss_fn):
     test_loss, correct = 0, 0
     with torch.no_grad():
         for (x, y) in dataloader:
-            x.to(device)
-            y.to(device)
+            # x.to(device)
+            # y.to(device)
             pred = model(x).type(torch.float).to(device)
             pred_sm = torch.softmax(pred.squeeze(1), dim=1)
             loss = loss_fn(pred_sm, y.squeeze(1).long())
@@ -71,7 +71,7 @@ def test_loop(dataloader, model, loss_fn):
 
 if __name__ == "__main__":
     train_data = dataset.TrainDataset(
-        feature_path="data/X_train.csv", label_path="data/y_train.csv"
+        feature_path="data/X_train.csv", label_path="data/y_train.csv", device=device
     )
 
     num_of_features = train_data.get_num_of_features()
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     dataloader_pretrain = DataLoader(train_data, batch_size=64, shuffle=True)
     dataloader_val = DataLoader(val_data, batch_size=64, shuffle=True)
 
-    nn_model = model.Model(num_of_features=num_of_features)
+    nn_model = model.Model(num_of_features=num_of_features).to(device)
     loss = CrossEntropyLoss()
     optimizer = torch.optim.Adam(nn_model.parameters(), lr=1e-4, weight_decay=1e-5)
 
