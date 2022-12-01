@@ -31,7 +31,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
 
-   def __init__(self, seq_len, n_features, embedding_dim=1024, num_layers=2, hidden_dim=2*1024):
+  def __init__(self, seq_len, n_features, embedding_dim=1024, num_layers=2, hidden_dim=2*1024):
     super(Encoder, self).__init__()
     self.seq_len, self.n_features = seq_len, n_features
     self.embedding_dim, self.hidden_dim = embedding_dim, hidden_dim

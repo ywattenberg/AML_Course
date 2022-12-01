@@ -52,10 +52,18 @@ if __name__ == "__main__":
     print("2: ", np.count_nonzero(y_train == 2), "percentage of 2: ", 100 * np.count_nonzero(y_train == 2)/len(y_train))
     print("3: ", np.count_nonzero(y_train == 3), "percentage of 3: ", 100 * np.count_nonzero(y_train == 3)/len(y_train))
 
-    y_pred = pd.read_csv("out.csv")
+    y_pred = pd.read_csv("predictions.csv")
     y_pred = y_pred["y"].to_numpy().flatten()
 
-    print("y_pred")
+    print("neural network")
+
+    print("0: ", np.count_nonzero(y_pred == 0), "percentage of 0: ", 100 * np.count_nonzero(y_pred == 0)/len(y_pred))
+    print("1: ", np.count_nonzero(y_pred == 1), "percentage of 1: ", 100 * np.count_nonzero(y_pred == 1)/len(y_pred))
+    print("2: ", np.count_nonzero(y_pred == 2), "percentage of 2: ", 100 * np.count_nonzero(y_pred == 2)/len(y_pred))
+    print("3: ", np.count_nonzero(y_pred == 3), "percentage of 3: ", 100 * np.count_nonzero(y_pred == 3)/len(y_pred))
+
+    print("best version")
+    y_pred = pd.read_csv("out.csv")
 
     print("0: ", np.count_nonzero(y_pred == 0), "percentage of 0: ", 100 * np.count_nonzero(y_pred == 0)/len(y_pred))
     print("1: ", np.count_nonzero(y_pred == 1), "percentage of 1: ", 100 * np.count_nonzero(y_pred == 1)/len(y_pred))
@@ -63,5 +71,7 @@ if __name__ == "__main__":
     print("3: ", np.count_nonzero(y_pred == 3), "percentage of 3: ", 100 * np.count_nonzero(y_pred == 3)/len(y_pred))
 
     print(y_train)
+
+  
 
 

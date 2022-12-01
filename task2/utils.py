@@ -2,8 +2,10 @@ import biosppy
 import numpy as np
 import pandas as pd
 import pywt
+import torch
 from biosppy.signals import ecg
 from sklearn.preprocessing import normalize
+from torch.nn import Softmax
 
 
 def remove_starting_period(data):
@@ -229,3 +231,50 @@ def process_data2(data):
             row = np.array(data.iloc[i].dropna())
             X_train = np.append(X_train, [obtain_features(row, 300)], axis = 0)
     return X_train
+
+
+def train_loop(dataloader, model, loss_fn, optimizer):
+    sm = Softmax(dim=1)
+    size = len(dataloader.dataset)
+    for batch, (x, y) in enumerate(dataloader):
+        pred = model(x).type(torch.float)
+        pred_sm = sm(pred)
+        y = y.long()
+    
+        loss = loss_fn(pred_sm, y.squeeze(1))
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if batch % 20 == 0:
+            loss, current = loss.item(), batch * len(x)
+            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+
+def test_loop(dataloader, model, loss_fn):
+    sm = Softmax(dim=1)
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    test_loss, correct = 0, 0
+
+    with torch.no_grad():
+        for batch, (x, y) in enumerate(dataloader):
+            pred = model(x).type(torch.float)
+            pred_sm = sm(pred)
+
+            # print(pred_sm)
+            loss = loss_fn(pred_sm, y.long().squeeze(1))
+            test_loss += loss
+            pred_sm = np.argmax(pred_sm.numpy(), axis=1)
+            correct += np.sum(pred_sm == y.numpy().squeeze(1))
+            # print(f"correct: {correct}")
+
+            # if (batch % 10 == 0):
+            #     print(pred_sm)
+            #     print(y.numpy().squeeze(1))
+
+    test_loss /= num_batches
+    correct /= size
+    print(f"Test Error \n Accuracy: {(100 * correct):>1f}%, Avg loss: {test_loss:>8f}")
+    return correct * 100
