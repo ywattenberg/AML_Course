@@ -1,13 +1,11 @@
+import dataset
+import model
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader
-from torch.nn import CrossEntropyLoss
-from torch.nn import Softmax
-
 import utils
-import dataset
-import model
+from torch.nn import CrossEntropyLoss, Softmax
+from torch.utils.data import DataLoader
 
 
 def train_loop(dataloader, model, loss_fn, optimizer):

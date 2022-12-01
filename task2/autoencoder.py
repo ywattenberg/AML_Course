@@ -1,6 +1,7 @@
 from torch import nn
 from torch.nn import functional as F
 
+
 class Encoder(nn.Module):
 
   def __init__(self, seq_len, n_features, embedding_dim=1024, num_layers=2, hidden_dim=2*1024):
