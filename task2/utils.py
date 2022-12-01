@@ -1,9 +1,10 @@
+import biosppy
 import numpy as np
 import pandas as pd
-import biosppy
+import pywt
 from biosppy.signals import ecg
 from sklearn.preprocessing import normalize
-import pywt
+
 
 def remove_starting_period(data):
     start = 700

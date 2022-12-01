@@ -1,12 +1,11 @@
+import dataset
+import model
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader
-from torch.nn import CrossEntropyLoss
-
 import utils
-import dataset
-import model
+from torch.nn import CrossEntropyLoss
+from torch.utils.data import DataLoader
 
 device = "mps"
 

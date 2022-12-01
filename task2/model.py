@@ -1,16 +1,5 @@
-from torch.nn import (
-    Module,
-    Linear,
-    ReLU,
-    Sequential,
-    Dropout,
-    Sigmoid,
-    Softmax,
-    Conv1d,
-    AvgPool1d,
-    MaxPool1d,
-    Flatten,
-)
+from torch.nn import (AvgPool1d, Conv1d, Dropout, Flatten, Linear, MaxPool1d,
+                      Module, ReLU, Sequential, Sigmoid, Softmax)
 
 
 class Model(Module):
