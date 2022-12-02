@@ -4,6 +4,7 @@ import pandas as pd
 import pywt
 import torch
 from biosppy.signals import ecg
+from imblearn.over_sampling import RandomOverSampler as OverSampler
 from sklearn.preprocessing import normalize
 from torch.nn import Softmax
 
@@ -278,3 +279,21 @@ def test_loop(dataloader, model, loss_fn):
     correct /= size
     print(f"Test Error \n Accuracy: {(100 * correct):>1f}%, Avg loss: {test_loss:>8f}")
     return correct * 100
+
+
+def oversample_data(X, y):
+    
+    def ratio_multiplier(y):
+        from collections import Counter
+
+        multiplier = {0: 1, 1: 2, 2: 1.5, 3: 3}
+        target_stats = Counter(y)
+        for key, value in target_stats.items():
+            if key in multiplier:
+                target_stats[key] = int(value * multiplier[key])
+        return target_stats
+
+    # oversample the data
+    oversampler = OverSampler(sampling_strategy=ratio_multiplier)
+    X_resampled, y_resampled = oversampler.fit_resample(X, y)
+    return X_resampled, y_resampled

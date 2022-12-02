@@ -6,17 +6,17 @@ from classifier_model import ClassifierModel
 
 
 def main():
-    X_test = pd.read_csv("data/X_test_2.csv").iloc[:, 1:]
+    X_test = pd.read_csv("data/X_test_2.csv")
 
-    pred_file = open('predictions.csv', 'w', newline='')
+    pred_file = open('predictions_oversample.csv', 'w', newline='')
     writer = csv.writer(pred_file, delimiter=',')
     fields = ['id','y']
     writer.writerow(fields)
 
     sm = torch.nn.Softmax(dim=1)
     print(len(X_test.columns))
-    model = ClassifierModel(935)
-    model.load_state_dict(torch.load("model_2.pth"))
+    model = ClassifierModel(936)
+    model.load_state_dict(torch.load("model_oversample_1.pth"))
     model.eval()
 
     for i in range(len(X_test)):

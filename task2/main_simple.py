@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 import utils
 from classifier_model import ClassifierModel
+from imblearn.over_sampling import RandomOverSampler as OverSampler
 from sklearn.ensemble import (AdaBoostClassifier, GradientBoostingClassifier,
                               RandomForestClassifier)
 from sklearn.impute import SimpleImputer
@@ -150,7 +151,7 @@ def main():
     # out.to_csv("out.csv", index=False)
 
     train_data = dataset.TrainDataset(
-        feature_path="data/X_train_2.csv", label_path="data/y_train.csv"
+        feature_path="data/X_train_2_oversampled.csv", label_path="data/y_train_oversampled.csv"
     )
 
     num_features = train_data.get_num_of_features()
@@ -170,8 +171,8 @@ def main():
     best_lr = 0
     best_wd = 0
 
-    for learning_rate in [0.00005]:
-        for weight_d in [0.000001]:
+    for learning_rate in [0.0001, 0.00005]:
+        for weight_d in [0.00001, 0.000001]:
             model = ClassifierModel(num_features=num_features)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_d)
             criterion = torch.nn.CrossEntropyLoss()
@@ -189,7 +190,7 @@ def main():
                     best_epoch = epoch
                     best_lr = learning_rate
                     best_wd = weight_d
-                    torch.save(model.state_dict(), "model_2.pth")
+                    torch.save(model.state_dict(), "model_oversample.pth")
 
 
             print(f"Best Accuracy: {best_accuracy}")

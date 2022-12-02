@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch
+import utils
 from torch import tensor
 from torch.nn import (AvgPool1d, AvgPool2d, Conv1d, Dropout, Linear, MaxPool2d,
                       Module, ReLU, Sequential, Sigmoid, Softmax)
@@ -70,8 +71,21 @@ if __name__ == "__main__":
     print("2: ", np.count_nonzero(y_pred == 2), "percentage of 2: ", 100 * np.count_nonzero(y_pred == 2)/len(y_pred))
     print("3: ", np.count_nonzero(y_pred == 3), "percentage of 3: ", 100 * np.count_nonzero(y_pred == 3)/len(y_pred))
 
-    print(y_train)
+    print("oversampled")
+    y_pred = pd.read_csv("predictions_oversample.csv")
 
-  
+    print("0: ", np.count_nonzero(y_pred == 0), "percentage of 0: ", 100 * np.count_nonzero(y_pred == 0)/len(y_pred))
+    print("1: ", np.count_nonzero(y_pred == 1), "percentage of 1: ", 100 * np.count_nonzero(y_pred == 1)/len(y_pred))
+    print("2: ", np.count_nonzero(y_pred == 2), "percentage of 2: ", 100 * np.count_nonzero(y_pred == 2)/len(y_pred))
+    print("3: ", np.count_nonzero(y_pred == 3), "percentage of 3: ", 100 * np.count_nonzero(y_pred == 3)/len(y_pred))
+
+    quit()
+    
+    # X = pd.read_csv("data/X_train_2.csv")
+    # y = pd.read_csv("data/y_train.csv").iloc[:, [1]]
+
+    # X_new, y_new = utils.oversample_data(X, y)
+    # pd.DataFrame(X_new).to_csv("data/X_train_2_oversampled.csv", index=False)
+    # pd.DataFrame(y_new).to_csv("data/y_train_oversampled.csv", index=True)
 
 
