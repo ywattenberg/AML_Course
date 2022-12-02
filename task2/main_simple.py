@@ -14,7 +14,6 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader
 from xgboost import XGBClassifier
 
-torch.manual_seed(42)
 
 def gridsearch(model, param_grid, X_train, y_train):
     X_train, X_val, y_train, y_val = train_test_split(
@@ -151,7 +150,7 @@ def main():
     # out.to_csv("out.csv", index=False)
 
     train_data = dataset.TrainDataset(
-        feature_path="data/X_train_2_oversampled.csv", label_path="data/y_train_oversampled.csv"
+        feature_path="data/X_train_2_oversampled_smote.csv", label_path="data/y_train_oversampled_smote.csv"
     )
 
     num_features = train_data.get_num_of_features()
@@ -190,7 +189,7 @@ def main():
                     best_epoch = epoch
                     best_lr = learning_rate
                     best_wd = weight_d
-                    torch.save(model.state_dict(), "model_oversample.pth")
+                    torch.save(model.state_dict(), "model_oversample_smote.pth")
 
 
             print(f"Best Accuracy: {best_accuracy}")

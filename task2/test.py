@@ -53,10 +53,10 @@ if __name__ == "__main__":
     print("2: ", np.count_nonzero(y_train == 2), "percentage of 2: ", 100 * np.count_nonzero(y_train == 2)/len(y_train))
     print("3: ", np.count_nonzero(y_train == 3), "percentage of 3: ", 100 * np.count_nonzero(y_train == 3)/len(y_train))
 
-    y_pred = pd.read_csv("predictions.csv")
+    y_pred = pd.read_csv("predictions_oversample_smote.csv")
     y_pred = y_pred["y"].to_numpy().flatten()
 
-    print("neural network")
+    print("smote")
 
     print("0: ", np.count_nonzero(y_pred == 0), "percentage of 0: ", 100 * np.count_nonzero(y_pred == 0)/len(y_pred))
     print("1: ", np.count_nonzero(y_pred == 1), "percentage of 1: ", 100 * np.count_nonzero(y_pred == 1)/len(y_pred))
@@ -81,11 +81,11 @@ if __name__ == "__main__":
 
     quit()
     
-    # X = pd.read_csv("data/X_train_2.csv")
-    # y = pd.read_csv("data/y_train.csv").iloc[:, [1]]
+    X = pd.read_csv("data/X_train_2.csv")
+    y = pd.read_csv("data/y_train.csv").iloc[:, [1]]
 
-    # X_new, y_new = utils.oversample_data(X, y)
-    # pd.DataFrame(X_new).to_csv("data/X_train_2_oversampled.csv", index=False)
-    # pd.DataFrame(y_new).to_csv("data/y_train_oversampled.csv", index=True)
+    X_new, y_new = utils.smote(X, y)
+    pd.DataFrame(X_new).to_csv("data/X_train_2_oversampled_smote.csv", index=False)
+    pd.DataFrame(y_new).to_csv("data/y_train_oversampled_smote.csv", index=True)
 
 

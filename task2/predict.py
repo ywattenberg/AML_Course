@@ -8,7 +8,7 @@ from classifier_model import ClassifierModel
 def main():
     X_test = pd.read_csv("data/X_test_2.csv")
 
-    pred_file = open('predictions_oversample.csv', 'w', newline='')
+    pred_file = open('predictions_oversample_smote.csv', 'w', newline='')
     writer = csv.writer(pred_file, delimiter=',')
     fields = ['id','y']
     writer.writerow(fields)
@@ -16,7 +16,7 @@ def main():
     sm = torch.nn.Softmax(dim=1)
     print(len(X_test.columns))
     model = ClassifierModel(936)
-    model.load_state_dict(torch.load("model_oversample_1.pth"))
+    model.load_state_dict(torch.load("model_oversample_smote.pth"))
     model.eval()
 
     for i in range(len(X_test)):

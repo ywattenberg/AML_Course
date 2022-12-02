@@ -4,6 +4,7 @@ import pandas as pd
 import pywt
 import torch
 from biosppy.signals import ecg
+from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling import RandomOverSampler as OverSampler
 from sklearn.preprocessing import normalize
 from torch.nn import Softmax
@@ -295,5 +296,11 @@ def oversample_data(X, y):
 
     # oversample the data
     oversampler = OverSampler(sampling_strategy=ratio_multiplier)
+    X_resampled, y_resampled = oversampler.fit_resample(X, y)
+    return X_resampled, y_resampled
+
+def smote(X, y):
+    # oversample the data
+    oversampler = SMOTE()
     X_resampled, y_resampled = oversampler.fit_resample(X, y)
     return X_resampled, y_resampled
