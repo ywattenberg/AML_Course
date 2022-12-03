@@ -150,8 +150,10 @@ def main():
     # out.to_csv("out.csv", index=False)
 
     train_data = dataset.TrainDataset(
-        feature_path="data/X_train_2_oversampled_smote.csv", label_path="data/y_train_oversampled_smote.csv"
+        feature_path="data/X_train_2_oversampled.csv", label_path="data/y_train_oversampled.csv"
     )
+
+
 
     num_features = train_data.get_num_of_features()
     length_train = int(len(train_data) * 0.8)
@@ -160,6 +162,7 @@ def main():
     train_data, val_data = torch.utils.data.random_split(
         train_data, [length_train, length_val]
     )
+
 
     train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=64, shuffle=False)
@@ -189,7 +192,7 @@ def main():
                     best_epoch = epoch
                     best_lr = learning_rate
                     best_wd = weight_d
-                    torch.save(model.state_dict(), "model_oversample_smote.pth")
+                    torch.save(model.state_dict(), "model_oversample_2.pth")
 
 
             print(f"Best Accuracy: {best_accuracy}")

@@ -6,10 +6,13 @@ class ClassifierModel(torch.nn.Module):
         super(ClassifierModel, self).__init__()
         
         self.nn = torch.nn.Sequential(
-            torch.nn.Linear(num_features, 1024),
+            torch.nn.Linear(num_features, 2048),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.2),
-            torch.nn.Linear(1024, 1024),
+            torch.nn.Linear(2048, 2048),
+            torch.nn.ReLU(),
+            torch.nn.Dropout(0.2),
+            torch.nn.Linear(2048, 1024),
             torch.nn.ReLU(),
             torch.nn.Dropout(0.2),
             torch.nn.Linear(1024, 256),
