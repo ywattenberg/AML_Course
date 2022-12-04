@@ -8,11 +8,18 @@ from torch.utils.data import DataLoader, Dataset
 class TrainDataset(Dataset):
     def __init__(self, feature_path, label_path, device="cpu"):
         self.device = device
-        self.features = pd.read_csv(feature_path)
+        if (type(feature_path) == str):
+            self.features = pd.read_csv(feature_path)
+        else:
+            self.features = feature_path
+        
         imputer = SimpleImputer(missing_values=np.nan, strategy="constant", fill_value=0)
         self.features = pd.DataFrame(imputer.fit_transform(self.features))
 
-        self.labels = pd.read_csv(label_path).iloc[:, 1:]
+        if (type(label_path) == str):
+            self.labels = pd.read_csv(label_path).iloc[:, [1]]
+        else:
+            self.labels = label_path
 
     def __len__(self):
         return len(self.labels)

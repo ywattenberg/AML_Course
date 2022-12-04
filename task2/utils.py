@@ -259,7 +259,9 @@ def test_loop(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss, correct = 0, 0
-
+    not_correct = [0,0,0,0]
+    classes = [0,0,0,0]
+    
     with torch.no_grad():
         for batch, (x, y) in enumerate(dataloader):
             pred = model(x).type(torch.float)
@@ -270,16 +272,22 @@ def test_loop(dataloader, model, loss_fn):
             test_loss += loss
             pred_sm = np.argmax(pred_sm.numpy(), axis=1)
             correct += np.sum(pred_sm == y.numpy().squeeze(1))
-            # print(f"correct: {correct}")
 
-            # if (batch % 10 == 0):
-            #     print(pred_sm)
-            #     print(y.numpy().squeeze(1))
-
+           
+            for (i, j) in zip(pred_sm, y.numpy().squeeze(1)):
+                classes[int (j)] += 1
+                if (i != j):
+                    not_correct[int (j)] += 1
+                    
+    percentage = [0,0,0,0]
+    for i in range(4):
+        percentage[i] = 100 * (not_correct[i] / classes[i])
+        print(f"Class {i} not predicted correctly: {percentage[i]:>0.1f}%")
+    
     test_loss /= num_batches
     correct /= size
     print(f"Test Error \n Accuracy: {(100 * correct):>1f}%, Avg loss: {test_loss:>8f}")
-    return correct * 100
+    return correct * 100, percentage
 
 
 def oversample_data(X, y):

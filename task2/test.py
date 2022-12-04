@@ -45,7 +45,7 @@ if __name__ == "__main__":
     
     # print(x_new)
 
-    y_train = pd.read_csv("data/y_train.csv")
+    y_train = pd.read_csv("data/y_train_oversampled.csv")
     y_train = y_train["y"].to_numpy().flatten()
 
     print("0: ", np.count_nonzero(y_train == 0), "percentage of 0: ", 100 * np.count_nonzero(y_train == 0)/len(y_train))

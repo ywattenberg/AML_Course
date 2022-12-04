@@ -11,7 +11,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from xgboost import XGBClassifier
 
 
@@ -150,21 +150,26 @@ def main():
     # out.to_csv("out.csv", index=False)
 
     train_data = dataset.TrainDataset(
-        feature_path="data/X_train_2_oversampled.csv", label_path="data/y_train_oversampled.csv"
+        feature_path="data/X_train_2.csv", label_path="data/y_train.csv"
     )
-
 
 
     num_features = train_data.get_num_of_features()
     length_train = int(len(train_data) * 0.8)
     length_val = len(train_data) - length_train
 
-    train_data, val_data = torch.utils.data.random_split(
-        train_data, [length_train, length_val]
-    )
+    train_data_2, val_data = torch.utils.data.random_split(
+            train_data, [length_train, length_val]
+        )
 
+    oversampled_train_x, oversampled_train_y = utils.oversample_data(train_data_2.dataset.features, train_data_2.dataset.labels)
+    oversampled_train_data = dataset.TrainDataset(oversampled_train_x, oversampled_train_y)
 
-    train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
+    # weights = [0.5, 0.15, 0.25, 0.1]
+    # samples_weight = torch.from_numpy(np.array([weights[t] for t in train_data_2.dataset.labels.values.squeeze()]))
+    # sampler = WeightedRandomSampler(samples_weight.type('torch.DoubleTensor'), len(samples_weight))
+
+    train_loader = DataLoader(oversampled_train_data, batch_size=64, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=64, shuffle=False)
 
 
@@ -172,6 +177,7 @@ def main():
     best_epoch = 0
     best_lr = 0
     best_wd = 0
+
 
     for learning_rate in [0.0001, 0.00005]:
         for weight_d in [0.00001, 0.000001]:
@@ -185,20 +191,22 @@ def main():
             for epoch in range(epochs):
                 print(f"Epoch {epoch + 1}\n-------------------------------")
                 utils.train_loop(train_loader, model, criterion, optimizer)
-                accuracy = utils.test_loop(val_loader, model, criterion)
+                accuracy, percentages = utils.test_loop(val_loader, model, criterion)
                 
                 if best_accuracy < accuracy:
                     best_accuracy = accuracy
                     best_epoch = epoch
                     best_lr = learning_rate
                     best_wd = weight_d
-                    torch.save(model.state_dict(), "model_oversample_2.pth")
+                    best_percentages = percentages
+                    # torch.save(model.state_dict(), "model_oversample_best.pth")
 
 
             print(f"Best Accuracy: {best_accuracy}")
             print(f"Best Epoch: {best_epoch}")
             print(f"Best Learning Rate: {best_lr}")
             print(f"Best Weight Decay: {best_wd}")
+            print(f"Best Percentages: {best_percentages}")
 
 if __name__ == "__main__":
     main()
