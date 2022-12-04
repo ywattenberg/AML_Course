@@ -19,15 +19,6 @@ y_train = pd.read_csv("data/y_train.csv")
 id_col = y_train["id"]
 y_train.drop("id", axis=1, inplace=True)
 
-train_data_base = dataset.TrainDataset(
-    feature_path="data/X_train_2.csv", label_path="data/y_train.csv"
-)
-
-length_train = int(len(train_data_base) * 0.8)
-length_val = len(train_data_base) - length_train
-
-train_data, val_data = torch.utils.data.random_split(train_data_base, [length_train, length_val])
-
 estimators = [
     ("rf", RandomForestClassifier(max_depth=5, n_estimators=300, max_features=60)),
     ("svr", make_pipeline(StandardScaler(), LinearSVC(random_state=42))),
