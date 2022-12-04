@@ -6,7 +6,7 @@ from sklearn.ensemble import (
     GradientBoostingClassifier,
     RandomForestClassifier,
     StackingClassifier,
-    HistGradientBoostingRegressor,
+    HistGradientBoostingClassifier,
 )
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
@@ -30,7 +30,7 @@ estimators = [
             max_depth=5, n_estimators=300, learning_rate=0.1, max_features=60
         ),
     ),
-    ("hgbc", HistGradientBoostingRegressor(max_depth=5, max_iter=300)),
+    ("hgbc", HistGradientBoostingClassifier(max_depth=5, max_iter=300)),
     ("ada", AdaBoostClassifier(n_estimators=300, learning_rate=0.1)),
 ]
 
