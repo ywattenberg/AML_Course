@@ -6,6 +6,7 @@ from sklearn.ensemble import (
     GradientBoostingClassifier,
     RandomForestClassifier,
     StackingClassifier,
+    HistGradientBoostingRegressor,
 )
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
@@ -29,7 +30,7 @@ estimators = [
             max_depth=5, n_estimators=300, learning_rate=0.1, max_features=60
         ),
     ),
-    ("hgbc", GradientBoostingClassifier(max_depth=5, n_estimators=500, learning_rate=0.1)),
+    ("hgbc", HistGradientBoostingRegressor(max_depth=5, max_iter=300)),
     ("ada", AdaBoostClassifier(n_estimators=300, learning_rate=0.1)),
 ]
 
@@ -37,7 +38,6 @@ clf = StackingClassifier(estimators=estimators, final_estimator=LogisticRegressi
 
 clf.fit(X_train, y_train)
 y_pred = clf.predict(X_test)
-
 
 out = pd.DataFrame()
 out["y"] = y_pred
