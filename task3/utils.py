@@ -2,6 +2,19 @@ import pickle
 import gzip
 import numpy as np
 import os
+import torchvision.transforms as transforms
+import torch
+import PIL
+
+
+def get_transforms():
+    return transforms.Compose(
+        [
+            transforms.Lambda(lambda x: torch.tensor(x, dtype=torch.uint8)),
+            transforms.Resize((256, 256), interpolation=PIL.Image.BICUBIC),
+            transforms.Normalize((0.5,), (0.5,)),
+        ]
+    )
 
 
 def load_zipped_pickle(filename):
@@ -27,7 +40,8 @@ def test_pred():
         height = prediction.shape[0]
         width = prediction.shape[1]
         prediction[
-            int(height / 2) - 50 : int(height / 2 + 50), int(width / 2) - 50 : int(width / 2 + 50)
+            int(height / 2) - 50 : int(height / 2 + 50),
+            int(width / 2) - 50 : int(width / 2 + 50),
         ] = True
 
         # DATA Strucure
