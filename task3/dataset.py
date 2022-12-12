@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+from torchvision import transforms
 import utils
 
 
@@ -26,6 +27,7 @@ class HeartDataset(Dataset):
         if unpack_frames:
             self.data = self.unpack_frames()
 
+
     def unpack_frames(self, data=None):
         if data is None:
             data = self.data
@@ -39,7 +41,7 @@ class HeartDataset(Dataset):
                         "video": entry["video"][:, :, frame],
                         "frames": [frame],
                         "box": entry["box"],
-                        "label": [entry["label"][:, :, frame]],
+                        "label": entry["label"][:, :, frame],
                         "dataset": entry["dataset"],
                     }
                 )
@@ -53,4 +55,8 @@ class HeartDataset(Dataset):
             return self.data[idx]
         else:
             item = self.data[idx]
-            return item["video"], item["label"]
+            #print(type(item["video"]))
+            #print(item["label"])
+            pic = utils.transform_data(item["video"])
+            lab = utils.transform_label(item["label"])
+            return (pic, lab)
