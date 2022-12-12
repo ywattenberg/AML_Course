@@ -17,25 +17,32 @@ def get_transforms():
         ]
     )
 
+
 def transform_data(data):
-    transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Resize((256,256)),
-    transforms.Normalize(
-        mean=[0.44531356896770125],
-        std=[0.2692461874154524],
-    ),
-    ])
-    normalized_img = transform(data/255)
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Resize((256, 256)),
+            transforms.Normalize(
+                mean=[0.44531356896770125],
+                std=[0.2692461874154524],
+            ),
+        ]
+    )
+    normalized_img = transform(data / 255)
     return normalized_img
 
+
 def transform_label(label):
-    transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Resize((256,256)),
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Resize((256, 256)),
+        ]
+    )
     normalized_img = transform(label)
     return normalized_img
+
 
 def load_zipped_pickle(filename):
     with gzip.open(filename, "rb") as f:
@@ -72,18 +79,17 @@ def test_pred():
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
-    
-    for batch, (x,y) in enumerate(train_loader):
-        print(x.DoubleTensor())
+
+    for batch, (x, y) in enumerate(train_loader):
         output = model(x)
         loss = loss_fn(output, y)
-        
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         if (batch % 10) == 0:
-            print("Batch: {}, Loss: {}".format(batch, loss.item().round(8)))
+            print(f"Batch: {batch}, Loss: {loss.item():.4f}")
 
 
 def test_loop(model, test_loader, loss_fn):
@@ -93,17 +99,18 @@ def test_loop(model, test_loader, loss_fn):
         for x, y in test_loader:
             output = model(x)
             test_loss += loss_fn(output, y).item()
-    
+
     test_loss /= size
     print(f"Test Error: {test_loss:>8f} \n")
 
     # print picture
     r = np.random.randint(0, len(test_loader))
     x, y = test_loader.dataset[r]
-    output = model(x)
-    plt.imshow(output.permute(1, 2, 0), cmap='gray', vmin=0, vmax= 1)
-    plt.show()
-    plt.imshow(y.permute(1, 2, 0), cmap='gray', vmin=0, vmax= 1)
-    plt.show()
-    
 
+    with torch.no_grad():
+        output = model(x.unsqueeze(0))
+
+    plt.imshow(output.permute(1, 2, 0), cmap="gray", vmin=0, vmax=1)
+    plt.show()
+    plt.imshow(y.permute(1, 2, 0), cmap="gray", vmin=0, vmax=1)
+    plt.show()
