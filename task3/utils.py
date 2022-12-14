@@ -6,7 +6,12 @@ import torchvision.transforms as transforms
 import torch
 import PIL
 import matplotlib.pyplot as plt
+import imageio
+from sklearn.decomposition import NMF
+from sklearn.decomposition import PCA
+import warnings
 
+warnings.filterwarnings("ignore")
 
 def get_transforms():
     return transforms.Compose(
@@ -114,3 +119,34 @@ def test_loop(model, test_loader, loss_fn):
     plt.show()
     plt.imshow(y.permute(1, 2, 0), cmap="gray", vmin=0, vmax=1)
     plt.show()
+
+# function to produce a gif from a numpy array
+# inputs:
+#   data: numpy array of shape (height, width, frames)
+#   name: name of the gif
+def produce_gif(data, name):
+    with imageio.get_writer(name, mode="I") as writer:
+        for i in range(data.shape[2]):
+            image = data[:, :, i]
+            writer.append_data(image)
+
+
+# function to apply NMF to a video
+# video: numpy array of shape (height, width, frames)
+# components: number of components to use in NMF
+# method: possible options ‘random’, ‘nndsvd’, ‘nndsvda’, ‘nndsvdar’, ‘custom’, default: ‘nndsvd’
+# returns: numpy array of shape (height, width, frames) with the NMF applied
+def apply_NMF(video, components, method="nndsvd"):
+    model = NMF(n_components=components, init=method, random_state=0)
+    W = model.fit_transform(video.reshape(-1, video.shape[2]))
+    H = model.components_
+
+    print(W.shape)
+    print(H.shape)
+    print(W)
+    print(H)
+    # return W, H
+    return (W @ H).reshape(video.shape)
+
+
+    
