@@ -10,6 +10,7 @@ import imageio
 from sklearn.decomposition import NMF
 from sklearn.decomposition import PCA
 import warnings
+from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
 
@@ -148,5 +149,15 @@ def apply_NMF(video, components, method="nndsvd"):
     # return W, H
     return (W @ H).reshape(video.shape)
 
+
+def apply_PCA(video, components):
+    scaler = StandardScaler()
+    video = scaler.fit_transform(video.reshape(video.shape[2], -1))
+    print(video.shape)
+    pca = PCA(n_components=components)
+    W = pca.fit_transform(video)
+    W_inverted = pca.inverse_transform(W)
+
+    return W_inverted
 
     
