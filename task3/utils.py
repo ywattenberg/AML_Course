@@ -214,8 +214,8 @@ def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename)
         print(video_prep.shape)
         video_prep = video_prep.reshape(-1, video_prep.shape[2])
         print(video_prep.shape)
-        video_prep = torch.Tensor(video_prep).to("cuda:0")
-        train_data[i]["video"] = torch_functions.robust_nmf(
+        # video_prep = torch.Tensor(video_prep)
+        _, _, tmp, _ = robust_nfm.robust_nmf(
             data=video_prep,
             rank=2,
             max_iter=1000,
@@ -225,7 +225,10 @@ def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename)
             reg_val=reg_parameter,
             sum_to_one=False,
         )
-
+        print(tmp)
+        print(tmp.shape)
+        print(video_prep.shape)
+        train_data[i]["video"] = tmp.reshape(256, 256, video_prep.shape[1])
         produce_gif(train_data[i]["video"], "tmp.gif")
 
         labels = train_data[i]["label"]
