@@ -115,7 +115,8 @@ def main():
         # utils.save_zipped_pickle(train_data[:i], f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
 
     print(f"saving train_data...")
-    utils.save_zipped_pickle(train_data, f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.pkl")
+    # utils.save_zipped_pickle(train_data, f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.pkl")
+    np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.npz", train_data)
     print(f"finished saving train_data")
 
     for i in tqdm(range(len(test_data))):
@@ -161,7 +162,8 @@ def main():
         # utils.save_zipped_pickle(test_data[:i], f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
 
     print(f"saving test_data...")
-    utils.save_zipped_pickle(test_data, f"data/test_data_{REG_VAL}_{IMAGE_SIZE}.pkl")
+    # utils.save_zipped_pickle(test_data, f"data/test_data_{REG_VAL}_{IMAGE_SIZE}.pkl")
+    np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.npz", train_data)
     print(f"saved test_data finished")
 
 
