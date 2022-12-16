@@ -36,7 +36,17 @@ from sklearn.decomposition import NMF
 
 
 def robust_nmf(
-    data, rank, beta, init, reg_val, sum_to_one, tol, max_iter=1000, print_every=10, user_prov=None
+    data,
+    rank,
+    beta,
+    init,
+    reg_val,
+    sum_to_one,
+    tol,
+    max_iter=1000,
+    print_every=10,
+    user_prov=None,
+    verbose=False,
 ):
     """
     This function performs the robust NMF algorithm.
@@ -97,8 +107,9 @@ def robust_nmf(
     fit[0] = beta_divergence(data, data_approx, beta)
     obj[0] = fit[0] + reg_val * np.sum(np.sqrt(np.sum(outlier**2, axis=0)))
 
-    # Print initial iteration:
-    print("Iter = 0; Obj = {}".format(obj[0]))
+    if verbose:
+        # Print initial iteration:
+        print("Iter = 0; Obj = {}".format(obj[0]))
 
     for iter in range(max_iter):
         # Update the outlier matrix:
@@ -117,20 +128,23 @@ def robust_nmf(
         fit[iter + 1] = beta_divergence(data, data_approx, beta)
         obj[iter + 1] = fit[iter + 1] + reg_val * np.sum(np.sqrt(np.sum(outlier**2, axis=0)))
 
-        if iter % print_every == 0:  # print progress
-            print(
-                "Iter = {}; Obj = {}; Err = {}".format(
-                    iter + 1, obj[iter + 1], np.abs((obj[iter] - obj[iter + 1]) / obj[iter])
+        if verbose:
+            if iter % print_every == 0:  # print progress
+                print(
+                    "Iter = {}; Obj = {}; Err = {}".format(
+                        iter + 1, obj[iter + 1], np.abs((obj[iter] - obj[iter + 1]) / obj[iter])
+                    )
                 )
-            )
 
         # Termination criterion:
         if np.abs((obj[iter] - obj[iter + 1]) / obj[iter]) <= tol:
-            print("Algorithm converged as per defined tolerance")
+            if verbose:
+                print("Algorithm converged as per defined tolerance")
             break
 
         if iter == (max_iter - 1):
-            print("Maximum number of iterations achieved")
+            if verbose:
+                print("Maximum number of iterations achieved")
 
     # In case the algorithm terminated early:
     obj = obj[:iter]
@@ -139,7 +153,7 @@ def robust_nmf(
     return basis, coeff, outlier, obj
 
 
-def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
+def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None, verbose=False):
     """
     This function retrieves factor matrices to initialize rNMF. It can do this
     via the following algorithms:
@@ -189,7 +203,8 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
 
     # Initialize basis and coefficients:
     if alg == "random":
-        print("Initializing rNMF uniformly at random.")
+        if verbose:
+            print("Initializing rNMF uniformly at random.")
         basis = np.random.rand(data.shape[0], rank)
         coeff = np.random.rand(rank, data.shape[1])
 
@@ -203,7 +218,8 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
 
         # NNDSVDar used to initialize beta-NMF as multiplicative algorithms do
         # not like zero values and regular NNDSVD causes sparsity.
-        print("Initializing rNMF with beta-NMF.")
+        if verbose:
+            print("Initializing rNMF with beta-NMF.")
         model = NMF(n_components=rank, init="nndsvdar", beta_loss=beta, solver="mu", verbose=False)
         basis = model.fit_transform(data)
         coeff = model.components_
@@ -215,7 +231,8 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
         return basis + eps, coeff + eps, outlier + eps
 
     elif alg == "NMF":
-        print("Initializing rNMF with NMF.")
+        if verbose:
+            print("Initializing rNMF with NMF.")
         model = NMF(n_components=rank, init="nndsvdar", verbose=False)
         basis = model.fit_transform(data)
         coeff = model.components_
@@ -227,7 +244,8 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
         return basis + eps, coeff + eps, outlier + eps
 
     elif alg == "nndsvdar":
-        print("Initializing rNMF with nndsvdar.")
+        if verbose:
+            print("Initializing rNMF with nndsvdar.")
         basis, coeff = _initialize_nmf(data, n_components=rank, init="nndsvdar")
 
         # Rescale coefficients if they will have a simplex constraint later:
@@ -237,7 +255,8 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
         return basis + eps, coeff + eps, outlier + eps
 
     elif alg == "user":
-        print("Initializing rNMF with user provided values.")
+        if verbose:
+            print("Initializing rNMF with user provided values.")
 
         # Make sure that the initialization provided is in the correct format:
         if user_prov is None:

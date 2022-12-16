@@ -39,7 +39,17 @@ from sklearn.decomposition import NMF
 
 
 def robust_nmf(
-    data, rank, beta, init, reg_val, sum_to_one, tol, max_iter=1000, print_every=10, user_prov=None
+    data,
+    rank,
+    beta,
+    init,
+    reg_val,
+    sum_to_one,
+    tol,
+    max_iter=1000,
+    print_every=10,
+    user_prov=None,
+    verbose=False,
 ):
     """
     This function performs the robust NMF algorithm.
@@ -86,7 +96,6 @@ def robust_nmf(
     # Utilities:
     # Defining epsilon to protect against division by zero:
     if data.type() == "torch.cuda.FloatTensor":
-        print(f"is float tensor")
         eps = 1.3e-7  # Slightly higher than actual epsilon in fp32
     else:
         eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
@@ -114,8 +123,9 @@ def robust_nmf(
     fit[0] = beta_divergence(data, data_approx, beta)
     obj[0] = fit[0] + reg_val * torch.sum(torch.sqrt(torch.sum(outlier**2, dim=0)))
 
-    # Print initial iteration:
-    print("Iter = 0; Obj = {}".format(obj[0]))
+    if verbose:
+        # Print initial iteration:
+        print("Iter = 0; Obj = {}".format(obj[0]))
 
     for iter in range(max_iter):
         # Update the outlier matrix:
@@ -136,20 +146,23 @@ def robust_nmf(
             torch.sqrt(torch.sum(outlier**2, dim=0))
         )
 
-        if iter % print_every == 0:  # print progress
-            print(
-                "Iter = {}; Obj = {}; Err = {}".format(
-                    iter + 1, obj[iter + 1], torch.abs((obj[iter] - obj[iter + 1]) / obj[iter])
+        if verbose:
+            if iter % print_every == 0:  # print progress
+                print(
+                    "Iter = {}; Obj = {}; Err = {}".format(
+                        iter + 1, obj[iter + 1], torch.abs((obj[iter] - obj[iter + 1]) / obj[iter])
+                    )
                 )
-            )
 
         # Termination criterion:
         if torch.abs((obj[iter] - obj[iter + 1]) / obj[iter]) <= tol:
-            print("Algorithm converged as per defined tolerance")
+            if verbose:
+                print("Algorithm converged as per defined tolerance")
             break
 
         if iter == (max_iter - 1):
-            print("Maximum number of iterations achieved")
+            if verbose:
+                print("Maximum number of iterations achieved")
 
     # In case the algorithm terminated early:
     obj = obj[:iter]
@@ -158,7 +171,7 @@ def robust_nmf(
     return basis, coeff, outlier, obj
 
 
-def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
+def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None, verbose=False):
     """
     This function retrieves factor matrices to initialize rNMF. It can do this
     via the following algorithms:
@@ -216,7 +229,8 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
 
     # Initialize basis and coefficients:
     if alg == "random":
-        print("Initializing rNMF uniformly at random.")
+        if verbose:
+            print("Initializing rNMF uniformly at random.")
         basis = torch.rand(data.size()[0], rank)
         coeff = torch.rand(rank, data.size()[1])
 
@@ -231,13 +245,15 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
 
         # NNDSVDar used to initialize beta-NMF as multiplicative algorithms do
         # not like zero values and regular NNDSVD causes sparsity.
-        print("Initializing rNMF with beta-NMF. Switching to NumPy.")
+        if verbose:
+            print("Initializing rNMF with beta-NMF. Switching to NumPy.")
         model = NMF(n_components=rank, init="nndsvdar", beta_loss=beta, solver="mu", verbose=False)
         basis = model.fit_transform(data.cpu().numpy())
         coeff = model.components_
 
         # Bringing output back into the GPU:
-        print("Done. Switching back to PyTorch.")
+        if verbose:
+            print("Done. Switching back to PyTorch.")
         if data.type() == "torch.cuda.FloatTensor":
             basis = torch.tensor(basis, dtype=torch.float32).cuda()
             coeff = torch.tensor(coeff, dtype=torch.float32).cuda()
@@ -254,13 +270,15 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
     elif alg == "NMF":
         # Switching to CPU as there is no GPU implementation of NMF:
 
-        print("Initializing rNMF with NMF. Switching to NumPy.")
+        if verbose:
+            print("Initializing rNMF with NMF. Switching to NumPy.")
         model = NMF(n_components=rank, init="nndsvdar", verbose=False)
         basis = model.fit_transform(data.cpu().numpy())
         coeff = model.components_
 
         # Bringing output back into the GPU:
-        print("Done. Switching back to PyTorch.")
+        if verbose:
+            print("Done. Switching back to PyTorch.")
         if data.type() == "torch.cuda.FloatTensor":
             basis = torch.tensor(basis, dtype=torch.float32).cuda()
             coeff = torch.tensor(coeff, dtype=torch.float32).cuda()
@@ -276,11 +294,13 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
 
     elif alg == "nndsvdar":
         # Switching to CPU as there is no GPU implementation of nndsvdar:
-        print("Initializing rNMF with nndsvdar. Switching to NumPy.")
+        if verbose:
+            print("Initializing rNMF with nndsvdar. Switching to NumPy.")
         basis, coeff = _initialize_nmf(data.cpu().numpy(), n_components=rank, init="nndsvdar")
 
         # Bringing output back into the GPU:
-        print("Done. Switching back to PyTorch.")
+        if verbose:
+            print("Done. Switching back to PyTorch.")
         if data.type() == "torch.cuda.FloatTensor":
             basis = torch.tensor(basis, dtype=torch.float32).cuda()
             coeff = torch.tensor(coeff, dtype=torch.float32).cuda()
@@ -295,7 +315,8 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
         return basis + eps, coeff + eps, outlier + eps
 
     elif alg == "user":
-        print("Initializing rNMF with user provided values.")
+        if verbose:
+            print("Initializing rNMF with user provided values.")
 
         # Make sure that the initialization provided is in the correct format:
         if user_prov is None:
