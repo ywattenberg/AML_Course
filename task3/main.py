@@ -45,9 +45,7 @@ def main():
     model = UNet(in_channels=1, out_channels=1, init_features=32)
     model.double()
 
-    data_train = dataset.HeartDataset(
-        path="data/train_data_1_112.npz", n_batches=1, unpack_frames=True
-    )
+    data_train = dataset.HeartDataset(path="data/train_data_1_112", n_batches=1, unpack_frames=True)
 
     pretrain_length = int(len(data_train) * 0.8)
     val_length = len(data_train) - pretrain_length

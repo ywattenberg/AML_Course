@@ -14,13 +14,13 @@ class HeartDataset(Dataset):
         if n_batches > 1:
             for i in range(n_batches):
                 if i == 0:
-                    self.data = np.load(f"{path}_{i}.npz", allow_pickle=True)
+                    self.data = np.load(f"{path}_{i}.npz", allow_pickle=True)["arr_0"]
                 else:
                     self.data = np.concatenate(
-                        (self.data, np.load(f"{path}_{i}.npz", allow_pickle=True))
+                        (self.data, np.load(f"{path}_{i}.npz", allow_pickle=True)["arr_0"])
                     )
         else:
-            self.data = np.load(f"{path}_{0}.npz", allow_pickle=True)
+            self.data = np.load(f"{path}_{0}.npz", allow_pickle=True)["arr_0"]
         # self.data = utils.load_zipped_pickle(path)
 
         if unpack_frames:
@@ -31,7 +31,7 @@ class HeartDataset(Dataset):
             data = self.data
 
         unpacked_data = []
-        for entry in data["arr_0"]:
+        for entry in data:
             for frame in entry["frames"]:
                 unpacked_data.append(
                     {
@@ -39,7 +39,7 @@ class HeartDataset(Dataset):
                         "frame": entry["nmf"][frame, :, :].numpy().astype(np.float64),
                         "frames": [frame],
                         "box": entry["box"],
-                        "label": entry["label"][:, :, frame],
+                        "label": entry["label"][frame, :, :],
                         "dataset": entry["dataset"],
                     }
                 )
