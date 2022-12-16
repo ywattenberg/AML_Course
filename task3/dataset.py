@@ -2,17 +2,18 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 import utils
+import numpy as np
+from data_aug import augment_sample
 
 
 class HeartDataset(Dataset):
-    def __init__(
-        self, data, path=None, transform=None, device=None, unpack_frames=False
-    ):
+    def __init__(self, data, path=None, transform=None, device=None, unpack_frames=False):
 
         if path is None:
             self.data = data
         else:
-            self.data = utils.load_zipped_pickle(path)
+            self.data = np.load(path, allow_pickle=True)
+            # self.data = utils.load_zipped_pickle(path)
 
         if transform is None:
             self.transform = utils.get_transforms()
@@ -27,18 +28,17 @@ class HeartDataset(Dataset):
         if unpack_frames:
             self.data = self.unpack_frames()
 
-
     def unpack_frames(self, data=None):
         if data is None:
             data = self.data
 
         unpacked_data = []
-        for entry in data:
+        for entry in data["arr_0"]:
             for frame in entry["frames"]:
                 unpacked_data.append(
                     {
                         "name": entry["name"],
-                        "video": entry["video"][:, :, frame],
+                        "frame": entry["nmf"][frame, :, :].numpy().astype(np.float64),
                         "frames": [frame],
                         "box": entry["box"],
                         "label": entry["label"][:, :, frame],
@@ -55,8 +55,5 @@ class HeartDataset(Dataset):
             return self.data[idx]
         else:
             item = self.data[idx]
-            #print(type(item["video"]))
-            #print(item["label"])
-            pic = utils.transform_data(item["video"])
-            lab = utils.transform_label(item["label"])
-            return (pic, lab)
+            item = augment_sample(item)
+            return (item["frame"], item["label"])

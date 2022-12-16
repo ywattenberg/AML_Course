@@ -11,8 +11,8 @@ import utils
 
 TEST = False
 DEVICE = "cuda"
-IMAGE_SIZE = 256
-REG_VAL = 10
+IMAGE_SIZE = 112
+REG_VAL = 1
 
 if DEVICE == "cuda":
     from torch_functions import robust_nmf
@@ -76,6 +76,8 @@ def main():
         video = train_data[i]["video"]
         # resize all frames to match IMAGE_SIZE
         video = transform_data(video, img_size=IMAGE_SIZE).numpy()
+        # resize label to also match IMAGE_SIZE
+        label = transform_label(train_data[i]["label"], img_size=IMAGE_SIZE).numpy()
 
         frame_shape = video.shape[1:]
         orig_len = video.shape[0]
@@ -98,11 +100,9 @@ def main():
 
         nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1])).cpu()
 
-        # padded_nmf = np.zeros((max_length, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float64)
-
-        # padded_nmf[: nmf.shape[0]] = nmf
-        # train_data[i]["padded_nmf"] = padded_nmf
-        train_data[i][f"nmf"] = nmf
+        train_data[i]["nmf"] = nmf
+        train_data[i]["label"] = label
+        train_data[i].pop("video")
 
         if TEST:
             print(f"reg_val: {REG_VAL}")
@@ -112,10 +112,7 @@ def main():
 
             utils.produce_gif(video, "tmp_train.gif")
 
-        # utils.save_zipped_pickle(train_data[:i], f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
-
     print(f"saving train_data...")
-    # utils.save_zipped_pickle(train_data, f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.pkl")
     np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.npz", train_data)
     print(f"finished saving train_data")
 
@@ -124,6 +121,8 @@ def main():
 
         # resize all frames to match IMAGE_SIZE
         video = transform_data(video, img_size=IMAGE_SIZE).numpy()
+        # resize label to also match IMAGE_SIZE
+        label = transform_label(test_data[i]["label"], img_size=IMAGE_SIZE).numpy()
 
         frame_shape = video.shape[1:]
         orig_len = video.shape[0]
@@ -144,11 +143,9 @@ def main():
 
         nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1])).cpu()
 
-        # padded_nmf = np.zeros((max_length, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float64)
-
-        # padded_nmf[: nmf.shape[0]] = nmf
-        # test_data[i]["padded_nmf"] = padded_nmf
-        test_data[i][f"nmf"] = nmf
+        test_data[i]["nmf"] = nmf
+        test_data[i]["label"] = label
+        test_data[i].pop("video")
 
         if TEST:
             print(f"reg_val: {REG_VAL}")
@@ -159,11 +156,8 @@ def main():
 
             utils.produce_gif(video, "tmp_test.gif")
 
-        # utils.save_zipped_pickle(test_data[:i], f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
-
     print(f"saving test_data...")
-    # utils.save_zipped_pickle(test_data, f"data/test_data_{REG_VAL}_{IMAGE_SIZE}.pkl")
-    np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.npz", train_data)
+    np.savez(f"data/test_data_{REG_VAL}_{IMAGE_SIZE}.npz", test_data)
     print(f"saved test_data finished")
 
 

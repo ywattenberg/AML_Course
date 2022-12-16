@@ -6,34 +6,48 @@ import utils
 import matplotlib.pyplot as plt
 from unet import UNet
 import torchmetrics
-from torch.autograd import Variable
+
+
+def train_loop(model, train_loader, loss_fn, optimizer):
+
+    for batch, (x, y) in enumerate(train_loader):
+        output = model(x)
+        loss = loss_fn(output, y)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if (batch % 10) == 0:
+            print(f"Batch: {batch}, Loss: {loss.item():.4f}")
+            # break
+
+
+def test_loop(model, test_loader, loss_fn, epoch):
+    size = len(test_loader.dataset)
+    test_loss = 0
+
+    with torch.no_grad():
+        for x, y in test_loader:
+            output = model(x)
+            test_loss += loss_fn(output, y).item()
+
+    test_loss /= size
+    print(f"Test Error: {test_loss:>8f} \n")
+
+    output = (output > 0.6).float()
+    utils.produce_gif(x[0].permute(1, 2, 0).detach().numpy(), f"img/input.gif")
+    utils.produce_gif(output[0].permute(1, 2, 0).detach().numpy(), f"img/output.gif")
+    utils.produce_gif(y[0].permute(1, 2, 0).int().detach().numpy(), f"img/label.gif")
 
 
 def main():
-    # model = torch.hub.load(
-    #     "mateuszbuda/brain-segmentation-pytorch",
-    #     "unet",
-    #     in_channels=1,
-    #     out_channels=1,
-    #     init_features=32,
-    #     pretrained=False,
-    # )
     model = UNet(in_channels=1, out_channels=1, init_features=32)
     model.double()
 
-    data_train = dataset.HeartDataset(data=None, path="data/train.pkl", unpack_frames=True)
-
-    print(len(data_train))
-    # for i in range(len(data_train)):
-    #     print("video: ", data_train[i][0].shape)
-    #     print("label: ", data_train[i][1].shape)
-
-    #     print(data_train[i][0])
-
-    #     plt.imshow(data_train[i][0].permute(1, 2, 0), cmap='gray', vmin=0, vmax= 1)
-    #     plt.show()
-
-    # quit()
+    data_train = dataset.HeartDataset(
+        data=None, path="data/train_data_1_112.npz", unpack_frames=True
+    )
 
     pretrain_length = int(len(data_train) * 0.8)
     val_length = len(data_train) - pretrain_length
@@ -41,8 +55,8 @@ def main():
         data_train, [pretrain_length, val_length]
     )
 
-    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=8, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=64, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(data_val, batch_size=64, shuffle=True)
     torch.set_grad_enabled(True)
 
     # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
@@ -53,8 +67,8 @@ def main():
 
     for epoch in range(epochs):
         print("Epoch: {}".format(epoch))
-        utils.train_loop(model, train_loader, loss_fn, optimizer)
-        utils.test_loop(model, val_loader, loss_fn, epoch)
+        train_loop(model, train_loader, loss_fn, optimizer)
+        test_loop(model, val_loader, loss_fn, epoch)
 
 
 if __name__ == "__main__":
