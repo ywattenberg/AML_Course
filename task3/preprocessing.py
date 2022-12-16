@@ -96,7 +96,7 @@ def main():
             print_every=100,
         )
 
-        nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1]))
+        nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1])).cpu()
 
         padded_nmf = np.zeros((max_length, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float64)
 
@@ -108,26 +108,9 @@ def main():
             print(f"reg_val: {REG_VAL}")
             video = train_data[0][f"padded_nmf"]
             print(video.shape)
-            if DEVICE == "cuda":
-                video = video.permute(1, 2, 0).cpu().numpy()
-            elif DEVICE == "cpu":
-                video = np.moveaxis(video, 0, -1)
+            video = np.moveaxis(video, 0, -1)
 
-            fig = plt.figure(frameon=False)
-            # plt.margins(0,0)
-            im = plt.imshow(video[:, :, 0], animated=True, cmap=plt.cm.bone)
-
-            def fig_update(i):
-                i = i % video.shape[0]
-                im.set_array(video[:, :, i])
-                return [im]
-
-            anim = animation.FuncAnimation(
-                fig,
-                fig_update,
-                frames=video.shape[-1],
-            )
-            anim.save("img/tmp.gif", fps=20)
+            utils.produce_gif(video, "tmp_train.gif")
 
         utils.save_zipped_pickle(train_data[:i], f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
 
@@ -158,7 +141,7 @@ def main():
             print_every=100,
         )
 
-        nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1]))
+        nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1])).cpu()
 
         padded_nmf = np.zeros((max_length, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float64)
 
@@ -171,26 +154,9 @@ def main():
             video = test_data[0][f"padded_nmf"]
             print(video.shape)
 
-            if DEVICE == "cuda":
-                video = video.permute(1, 2, 0).cpu().numpy()
-            elif DEVICE == "cpu":
-                video = np.moveaxis(video, 0, -1)
+            video = np.moveaxis(video, 0, -1)
 
-            fig = plt.figure(frameon=False)
-            # plt.margins(0,0)
-            im = plt.imshow(video[:, :, 0], animated=True, cmap=plt.cm.bone)
-
-            def fig_update(i):
-                i = i % video.shape[0]
-                im.set_array(video[:, :, i])
-                return [im]
-
-            anim = animation.FuncAnimation(
-                fig,
-                fig_update,
-                frames=video.shape[-1],
-            )
-            anim.save("img/tmp.gif", fps=20)
+            utils.produce_gif(video, "tmp_test.gif")
 
         utils.save_zipped_pickle(test_data[:i], f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
 
