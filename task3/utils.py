@@ -204,7 +204,7 @@ def high_pass_filter(video, dimensions, sigma):
     return video
 
 
-def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename, device):
+def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename):
     # load data
     train_data = load_zipped_pickle(f"data/{filename}.pkl")
 
