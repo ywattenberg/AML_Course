@@ -9,8 +9,8 @@ class JaccardLoss(nn.Module):
 
     def forward(self, y_pred, y_true):
         y_true = y_true.int()
-        utils.produce_gif(y_pred[0].int().permute(1, 2, 0).detach().numpy(), f"ypred.gif")
-        utils.produce_gif(y_true[0].permute(1, 2, 0).detach().numpy(), f"ytrue.gif")
+        # utils.produce_gif(y_pred[0].permute(1, 2, 0).detach().numpy(), f"ypred.gif")
+        # utils.produce_gif(y_true[0].permute(1, 2, 0).detach().numpy(), f"ytrue.gif")
         assert y_pred.size() == y_true.size()
         y_pred = y_pred.contiguous().view(-1)
         y_true = y_true.contiguous().view(-1)

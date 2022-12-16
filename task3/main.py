@@ -5,6 +5,8 @@ import numpy as np
 import utils
 import matplotlib.pyplot as plt
 from unet import UNet
+import torchmetrics
+from torch.autograd import Variable
 
 
 def main():
@@ -41,8 +43,10 @@ def main():
 
     train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=8, shuffle=True)
     val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
+    torch.set_grad_enabled(True)
 
-    loss_fn = loss.DiceLoss()
+    # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
+    loss_fn = loss.JaccardLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     epochs = 50
@@ -50,7 +54,7 @@ def main():
     for epoch in range(epochs):
         print("Epoch: {}".format(epoch))
         utils.train_loop(model, train_loader, loss_fn, optimizer)
-        utils.test_loop(model, val_loader, loss_fn)
+        utils.test_loop(model, val_loader, loss_fn, epoch)
 
 
 if __name__ == "__main__":
