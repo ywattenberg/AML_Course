@@ -12,7 +12,7 @@ import utils
 TEST = False
 DEVICE = "cuda"
 IMAGE_SIZE = 256
-REG_VAL = 15
+REG_VAL = 10
 
 if DEVICE == "cuda":
     from torch_functions import robust_nmf
@@ -112,11 +112,11 @@ def main():
 
             utils.produce_gif(video, "tmp_train.gif")
 
-        utils.save_zipped_pickle(train_data[:i], f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
+        # utils.save_zipped_pickle(train_data[:i], f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
 
+    print(f"saving train_data...")
     utils.save_zipped_pickle(train_data, f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.pkl")
-    if os.path.exists(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl"):
-        os.remove(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
+    print(f"finished saving train_data")
 
     for i in tqdm(range(len(test_data))):
         video = test_data[i]["video"]
@@ -158,11 +158,11 @@ def main():
 
             utils.produce_gif(video, "tmp_test.gif")
 
-        utils.save_zipped_pickle(test_data[:i], f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
+        # utils.save_zipped_pickle(test_data[:i], f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
 
+    print(f"saving test_data...")
     utils.save_zipped_pickle(test_data, f"data/test_data_{REG_VAL}_{IMAGE_SIZE}.pkl")
-    if os.path.exists(f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl"):
-        os.remove(f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_tmp.pkl")
+    print(f"saved test_data finished")
 
 
 if __name__ == "__main__":
