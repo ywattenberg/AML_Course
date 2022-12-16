@@ -13,6 +13,7 @@ TEST = False
 DEVICE = "cuda"
 IMAGE_SIZE = 112
 REG_VAL = 1
+SAVING_BATCHES = 2
 
 if DEVICE == "cuda":
     from torch_functions import robust_nmf
@@ -112,8 +113,14 @@ def main():
 
             utils.produce_gif(video, "tmp_train.gif")
 
-    print(f"saving train_data...")
-    np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.npz", train_data)
+    print(f"saving train_data in {SAVING_BATCHES} batches...")
+    for i in tqdm(range(0, SAVING_BATCHES)):
+        start_idx = i * int(len(train_data) / SAVING_BATCHES)
+        end_idx = (i + 1) * int(len(train_data) / SAVING_BATCHES)
+        if end_idx > len(train_data):
+            end_idx = len(train_data)
+
+        np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}.npz", train_data[start_idx, end_idx])
     print(f"finished saving train_data")
 
     for i in tqdm(range(len(test_data))):
@@ -121,8 +128,6 @@ def main():
 
         # resize all frames to match IMAGE_SIZE
         video = transform_data(video, img_size=IMAGE_SIZE).numpy()
-        # resize label to also match IMAGE_SIZE
-        label = transform_label(test_data[i]["label"], img_size=IMAGE_SIZE).numpy()
 
         frame_shape = video.shape[1:]
         orig_len = video.shape[0]
@@ -144,7 +149,6 @@ def main():
         nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1])).cpu()
 
         test_data[i]["nmf"] = nmf
-        test_data[i]["label"] = label
         test_data[i].pop("video")
 
         if TEST:
@@ -156,8 +160,14 @@ def main():
 
             utils.produce_gif(video, "tmp_test.gif")
 
-    print(f"saving test_data...")
-    np.savez(f"data/test_data_{REG_VAL}_{IMAGE_SIZE}.npz", test_data)
+    print(f"saving test_data in {SAVING_BATCHES} batches...")
+    for i in tqdm(range(0, SAVING_BATCHES)):
+        start_idx = i * int(len(test_data) / SAVING_BATCHES)
+        end_idx = (i + 1) * int(len(test_data) / SAVING_BATCHES)
+        if end_idx > len(test_data):
+            end_idx = len(test_data)
+
+        np.savez(f"data/test_data_{REG_VAL}_{IMAGE_SIZE}.npz", test_data[start_idx, end_idx])
     print(f"saved test_data finished")
 
 
