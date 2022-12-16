@@ -11,6 +11,8 @@ from sklearn.decomposition import NMF
 from sklearn.decomposition import PCA
 import warnings
 from sklearn.preprocessing import StandardScaler
+from scipy.ndimage import convolve
+import robust_nfm
 
 warnings.filterwarnings("ignore")
 
@@ -29,10 +31,10 @@ def transform_data(data):
         [
             transforms.ToTensor(),
             transforms.Resize((256, 256)),
-            transforms.Normalize(
-                mean=[0.44531356896770125],
-                std=[0.2692461874154524],
-            ),
+            # transforms.Normalize(
+            #     mean=[0.44531356896770125],
+            #     std=[0.2692461874154524],
+            # ),
         ]
     )
     normalized_img = transform(data / 255)
@@ -142,10 +144,10 @@ def apply_NMF(video, components, method="nndsvd"):
     W = model.fit_transform(video.reshape(-1, video.shape[2]))
     H = model.components_
 
-    print(W.shape)
-    print(H.shape)
-    print(W)
-    print(H)
+    # print(W.shape)
+    # print(H.shape)
+    # print(W)
+    # print(H)
     # return W, H
     return (W @ H).reshape(video.shape)
 
@@ -160,4 +162,55 @@ def apply_PCA(video, components):
 
     return W_inverted
 
+
+def gaussian_filter(shape, sigma):
+    """
+    Returns a 2D gaussian filter specified by its shape and standard deviation.
+    """
+    m, n = [(ss - 1.) / 2. for ss in shape]
+    y, x = np.ogrid[-m:m+1, -n:n+1]
+    h = np.exp(-(x * x + y * y) / (2. * sigma * sigma))
+    h[h < np.finfo(h.dtype).eps * h.max()] = 0
+    sumh = h.sum()
+    if sumh != 0:
+        h /= sumh
+    return h
+
+
+# function to apply a high pass filter to a video
+# video: numpy array of shape (height, width, frames)
+# shape: shape of the gaussian filter
+# sigma: standard deviation of the gaussian filter
+def high_pass_filter(video, dimensions, sigma):
+    x, y = dimensions
+    gauss_filter = gaussian_filter((x, y), sigma)
+    unary_impulse = np.zeros((x, y))
+    unary_impulse[int(x / 2), int(y / 2)] = 1
+    high_pass_filter = unary_impulse - gauss_filter
+
+    # apply filter to each frame
+    for i in range(video.shape[2]):
+        video[:, :, i] = convolve(video[:, :, i], high_pass_filter)
     
+    return video
+    
+
+def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename):
+    # load data
+    train_data = load_zipped_pickle(f"data/{filename}.pkl")
+
+    # apply NMF to train data
+    for i in range(len(train_data)):
+        video_prep = transform_data(train_data[i]["video"]).permute(1, 2, 0).numpy()
+        print(video_prep.shape)
+        video_prep = video_prep.reshape(-1 ,video_prep.shape[2])
+        print(video_prep.shape)
+        train_data[i]["video"] = robust_nfm.robust_nmf(data=video_prep, rank=2, max_iter=1000, tol=1e-7, beta=regularization, init='NMF', reg_val=reg_parameter, sum_to_one=False)
+
+        labels = train_data[i]["labels"]
+        train_data[i]["labels"] = transform_label(labels)
+
+        produce_gif(train_data[i]["video"], "tmp.gif")
+
+    save_zipped_pickle(train_data, f"data/{new_filename}.pkl")
+    # apply NMF to test data
