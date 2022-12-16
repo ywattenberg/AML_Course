@@ -98,10 +98,10 @@ def main():
 
         nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1])).cpu()
 
-        padded_nmf = np.zeros((max_length, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float64)
+        # padded_nmf = np.zeros((max_length, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float64)
 
-        padded_nmf[: nmf.shape[0]] = nmf
-        train_data[i]["padded_nmf"] = padded_nmf
+        # padded_nmf[: nmf.shape[0]] = nmf
+        # train_data[i]["padded_nmf"] = padded_nmf
         train_data[i][f"nmf"] = nmf
 
         if TEST:
@@ -144,10 +144,10 @@ def main():
 
         nmf = outlier.reshape((orig_len, frame_shape[0], frame_shape[1])).cpu()
 
-        padded_nmf = np.zeros((max_length, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float64)
+        # padded_nmf = np.zeros((max_length, IMAGE_SIZE, IMAGE_SIZE), dtype=np.float64)
 
-        padded_nmf[: nmf.shape[0]] = nmf
-        test_data[i]["padded_nmf"] = padded_nmf
+        # padded_nmf[: nmf.shape[0]] = nmf
+        # test_data[i]["padded_nmf"] = padded_nmf
         test_data[i][f"nmf"] = nmf
 
         if TEST:
