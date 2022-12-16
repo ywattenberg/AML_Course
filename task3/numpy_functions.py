@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Python/PyTorch port of [1]. Original MATLAB code available at the authors
+Python/NumPy port of [1]. Original MATLAB code available at the authors
 websites. This code implements the generalized beta divergence, as in the
 authors technical report [2].
 
 Algorithms available for the initializations of rNMF are listed in [3-5].
 
-Created on Sat Dec 29 2018.
+Created on Mon Dec 24 2018.
 
 If you find bugs and/or limitations, please email neel DOT dey AT nyu DOT edu.
 
@@ -30,12 +30,9 @@ REFERENCES:
     Recognition 41.4 (2008): 1350-1362.
 """
 
-import torch
-from torch.nn.functional import normalize
 import numpy as np
+from sklearn.preprocessing import normalize
 from sklearn.decomposition import NMF
-
-# from sklearn.decomposition.nmf import _initialize_nmf
 
 
 def robust_nmf(
@@ -82,37 +79,23 @@ def robust_nmf(
     NOTE: init == 'bNMF' applies the same beta parameter as required for rNMF,
     which is nice, but is slow due to multiplicative updates
     """
-    video = torch.Tensor(video).to("cuda:0")
+
     # Utilities:
     # Defining epsilon to protect against division by zero:
-    if data.type() == "torch.cuda.FloatTensor":
-        print(f"is float tensor")
-        eps = 1.3e-7  # Slightly higher than actual epsilon in fp32
-    else:
-        eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
+    eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
 
     # Initialize rNMF:
     basis, coeff, outlier = initialize_rnmf(data, rank, init, beta, sum_to_one, user_prov)
 
-    # print(f"basis: {basis.get_device()}")
-    # print(f"coeff: {coeff.get_device()}")
-    # print(f"outlier: {outlier.get_device()}")
-
-    basis.to("cuda:0")
-    coeff.to("cuda:0")
-    outlier = torch.Tensor(outlier).to("cuda:0")
-    # print(f"basis: {basis.get_device()}")
-    # print(f"coeff: {coeff.get_device()}")
-    # print(f"outlier: {outlier.get_device()}")
     # Set up for the algorithm:
     # Initial approximation of the reconstruction:
     data_approx = basis @ coeff + outlier + eps
-    fit = torch.zeros(max_iter + 1)
-    obj = torch.zeros(max_iter + 1)
+    fit = np.zeros(max_iter + 1)
+    obj = np.zeros(max_iter + 1)
 
     # Monitoring convergence:
     fit[0] = beta_divergence(data, data_approx, beta)
-    obj[0] = fit[0] + reg_val * torch.sum(torch.sqrt(torch.sum(outlier**2, dim=0)))
+    obj[0] = fit[0] + reg_val * np.sum(np.sqrt(np.sum(outlier**2, axis=0)))
 
     # Print initial iteration:
     print("Iter = 0; Obj = {}".format(obj[0]))
@@ -132,19 +115,17 @@ def robust_nmf(
 
         # Monitor optimization:
         fit[iter + 1] = beta_divergence(data, data_approx, beta)
-        obj[iter + 1] = fit[iter + 1] + reg_val * torch.sum(
-            torch.sqrt(torch.sum(outlier**2, dim=0))
-        )
+        obj[iter + 1] = fit[iter + 1] + reg_val * np.sum(np.sqrt(np.sum(outlier**2, axis=0)))
 
         if iter % print_every == 0:  # print progress
             print(
                 "Iter = {}; Obj = {}; Err = {}".format(
-                    iter + 1, obj[iter + 1], torch.abs((obj[iter] - obj[iter + 1]) / obj[iter])
+                    iter + 1, obj[iter + 1], np.abs((obj[iter] - obj[iter + 1]) / obj[iter])
                 )
             )
 
         # Termination criterion:
-        if torch.abs((obj[iter] - obj[iter + 1]) / obj[iter]) <= tol:
+        if np.abs((obj[iter] - obj[iter + 1]) / obj[iter]) <= tol:
             print("Algorithm converged as per defined tolerance")
             break
 
@@ -170,11 +151,6 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
         5. 'user': provide own initializations. Must be passed in 'user_prov'
         as a dictionary with the format:
             user_prov['basis'], user_prov['coeff'], user_prov['outlier']
-
-    'NMF', 'bNMF', 'nndsvdar' cause a switch to NumPy as these algorithms do
-    not have PyTorch implementations, before going back to PyTorch. This
-    shouldn't be a problem as sklearn's implementations are quite efficient and
-    these are just initializations.
 
     Input:
         1. data: data to be factorized.
@@ -206,91 +182,57 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
 
     # Utilities:
     # Defining epsilon to protect against division by zero:
-    if data.type() == "torch.cuda.FloatTensor":
-        eps = 1.3e-7  # Slightly higher than actual epsilon in fp32
-    else:
-        eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
+    eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
 
     # Initialize outliers with uniform random values:
-    outlier = torch.rand(data.size()[0], data.size()[1])
+    outlier = np.random.rand(data.shape[0], data.shape[1])
 
     # Initialize basis and coefficients:
     if alg == "random":
         print("Initializing rNMF uniformly at random.")
-        basis = torch.rand(data.size()[0], rank)
-        coeff = torch.rand(rank, data.size()[1])
+        basis = np.random.rand(data.shape[0], rank)
+        coeff = np.random.rand(rank, data.shape[1])
 
         # Rescale coefficients if they will have a simplex constraint later:
         if sum_to_one == 1:
-            coeff = normalize(coeff, p=1, dim=0, eps=eps)
+            coeff = normalize(coeff, norm="l1", axis=0)
 
         return basis + eps, coeff + eps, outlier + eps
 
     elif alg == "bNMF":
-        # Switching to CPU as there is no GPU implementation of bNMF:
 
         # NNDSVDar used to initialize beta-NMF as multiplicative algorithms do
         # not like zero values and regular NNDSVD causes sparsity.
-        print("Initializing rNMF with beta-NMF. Switching to NumPy.")
+        print("Initializing rNMF with beta-NMF.")
         model = NMF(n_components=rank, init="nndsvdar", beta_loss=beta, solver="mu", verbose=False)
-        basis = model.fit_transform(data.cpu().numpy())
+        basis = model.fit_transform(data)
         coeff = model.components_
-
-        # Bringing output back into the GPU:
-        print("Done. Switching back to PyTorch.")
-        if data.type() == "torch.cuda.FloatTensor":
-            basis = torch.tensor(basis, dtype=torch.float32).cuda()
-            coeff = torch.tensor(coeff, dtype=torch.float32).cuda()
-        else:
-            basis = torch.from_numpy(basis).cuda()
-            coeff = torch.from_numpy(coeff).cuda()
 
         # Rescale coefficients if they will have a simplex constraint later:
         if sum_to_one == 1:
-            coeff = normalize(coeff, p=1, dim=0, eps=eps)
+            coeff = normalize(coeff, norm="l1", axis=0)
 
         return basis + eps, coeff + eps, outlier + eps
 
     elif alg == "NMF":
-        # Switching to CPU as there is no GPU implementation of NMF:
-
-        print("Initializing rNMF with NMF. Switching to NumPy.")
+        print("Initializing rNMF with NMF.")
         model = NMF(n_components=rank, init="nndsvdar", verbose=False)
-        basis = model.fit_transform(data.cpu().numpy())
+        basis = model.fit_transform(data)
         coeff = model.components_
-
-        # Bringing output back into the GPU:
-        print("Done. Switching back to PyTorch.")
-        if data.type() == "torch.cuda.FloatTensor":
-            basis = torch.tensor(basis, dtype=torch.float32).cuda()
-            coeff = torch.tensor(coeff, dtype=torch.float32).cuda()
-        else:
-            basis = torch.from_numpy(basis).cuda()
-            coeff = torch.from_numpy(coeff).cuda()
 
         # Rescale coefficients if they will have a simplex constraint later:
         if sum_to_one == 1:
-            coeff = normalize(coeff, p=1, dim=0, eps=eps)
+            coeff = normalize(coeff, norm="l1", axis=0)
 
         return basis + eps, coeff + eps, outlier + eps
 
     elif alg == "nndsvdar":
-        # Switching to CPU as there is no GPU implementation of nndsvdar:
-        print("Initializing rNMF with nndsvdar. Switching to NumPy.")
-        basis, coeff = _initialize_nmf(data.cpu().numpy(), n_components=rank, init="nndsvdar")
-
-        # Bringing output back into the GPU:
-        print("Done. Switching back to PyTorch.")
-        if data.type() == "torch.cuda.FloatTensor":
-            basis = torch.tensor(basis, dtype=torch.float32).cuda()
-            coeff = torch.tensor(coeff, dtype=torch.float32).cuda()
-        else:
-            basis = torch.from_numpy(basis).cuda()
-            coeff = torch.from_numpy(coeff).cuda()
+        print("Initializing rNMF with nndsvdar.")
+        basis, coeff = _initialize_nmf(data, n_components=rank, init="nndsvdar")
 
         # Rescale coefficients if they will have a simplex constraint later:
         if sum_to_one == 1:
-            coeff = normalize(coeff, p=1, dim=0, eps=eps)
+            coeff = normalize(coeff, norm="l1", axis=0)
 
         return basis + eps, coeff + eps, outlier + eps
 
@@ -306,13 +248,6 @@ def initialize_rnmf(data, rank, alg, beta=2, sum_to_one=0, user_prov=None):
 
         elif "basis" not in user_prov or "coeff" not in user_prov or "outlier" not in user_prov:
             raise ValueError("Wrong format for initialization dictionary")
-
-        elif (
-            user_prov["basis"].type() != data.type()
-            or user_prov["coeff"].type() != data.type()
-            or user_prov["outlier"].type() != data.type()
-        ):
-            raise ValueError("Initializations must the same dtype as data")
 
         return user_prov["basis"], user_prov["coeff"], user_prov["outlier"]
 
@@ -355,10 +290,7 @@ def beta_divergence(mat1, mat2, beta):
 
     # Utilities:
     # Defining epsilon to protect against division by zero:
-    if mat1.type() == "torch.cuda.FloatTensor":
-        eps = 1.3e-7  # Slightly higher than actual epsilon in fp32
-    else:
-        eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
+    eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
 
     # Inline function for vectorizing arrays for readability:
     vec = lambda X: X.flatten()
@@ -369,30 +301,32 @@ def beta_divergence(mat1, mat2, beta):
 
     if beta == 2:
         # Gaussian assumption.
-        beta_div = 0.5 * (torch.norm(mat1 - mat2, p="fro") ** 2)
+        beta_div = 0.5 * (np.linalg.norm(mat1 - mat2, ord="fro") ** 2)
 
     elif beta == 1:
         # Poisson assumption.
 
-        # Finding elements that would cause a division by zero/issues with log:
-        zeromask = mat1 <= eps
-        onemask = ~zeromask
+        # Identify indices in the arrays that would cause issues with division
+        # by zero or with the log. There's probably a faster way of doing this:
+        idx_zeros = np.flatnonzero(mat1 <= eps)
+        idx_interest = np.ones(mat1.size, dtype=bool)
+        idx_interest[idx_zeros] = False
 
-        beta_div = torch.sum(
-            (mat1[onemask] * torch.log(mat1[onemask] / mat2[onemask]))
-            - mat1[onemask]
-            + mat2[onemask]
-        ) + torch.sum(mat2[zeromask])
+        # Inline functions for readability:
+        nonzero = lambda X: X.flatten()[idx_interest]
+        zero = lambda X: X.flatten()[idx_zeros]
+
+        beta_div = np.sum(
+            (nonzero(mat1) * np.log(nonzero(mat1) / nonzero(mat2))) - nonzero(mat1) + nonzero(mat2)
+        ) + np.sum(zero(mat2))
 
     elif beta == 0:
         # Multiplicative gamma assumption.
-        beta_div = torch.sum(vec(mat1) / vec(mat2) - torch.log(vec(mat1) / vec(mat2))) - len(
-            vec(mat1)
-        )
+        beta_div = np.sum(vec(mat1) / vec(mat2) - np.log(vec(mat1) / vec(mat2))) - len(vec(mat1))
 
     else:
         # General case.
-        beta_div = torch.sum(
+        beta_div = np.sum(
             vec(mat1) ** beta
             + (beta - 1) * vec(mat2) ** beta
             - beta * vec(mat1) * (vec(mat2)) ** (beta - 1)
@@ -417,7 +351,7 @@ def update_basis(data, data_approx, beta, basis, coeff):
         Multiplicative update for basis matrix.
     """
     return basis * (
-        (data * (data_approx ** (beta - 2)) @ coeff.t()) / ((data_approx ** (beta - 1)) @ coeff.t())
+        (data * (data_approx ** (beta - 2)) @ coeff.T) / ((data_approx ** (beta - 1)) @ coeff.T)
     )
 
 
@@ -445,20 +379,18 @@ def update_coeff(data, data_approx, beta, basis, coeff, sum_to_one):
 
     if sum_to_one == 1:
 
-        Gn = (basis.t()) @ (data * bet2(data_approx)) + torch.sum(
-            (basis @ coeff) * bet1(data_approx), dim=0
+        Gn = (basis.T) @ (data * bet2(data_approx)) + np.sum(
+            (basis @ coeff) * bet1(data_approx), axis=0
         )
-        Gp = (basis.t()) @ bet1(data_approx) + torch.sum(
-            (basis @ coeff) * data * bet2(data_approx), dim=0
+        Gp = (basis.T) @ bet1(data_approx) + np.sum(
+            (basis @ coeff) * data * bet2(data_approx), axis=0
         )
         coeff = coeff * (Gn / Gp)
 
-        return normalize(coeff, p=1, dim=0)
+        return normalize(coeff, norm="l1", axis=0)
 
     elif sum_to_one == 0:
-        return coeff * (
-            ((basis.t()) @ (data * bet2(data_approx))) / ((basis.t()) @ bet1(data_approx))
-        )
+        return coeff * (((basis.T) @ (data * bet2(data_approx))) / ((basis.T) @ bet1(data_approx)))
 
 
 def update_outlier(data, data_approx, outlier, beta, reg_val):
@@ -478,16 +410,14 @@ def update_outlier(data, data_approx, outlier, beta, reg_val):
     """
     # Utilities:
     # Defining epsilon to protect against division by zero:
-    if data.type() == "torch.cuda.FloatTensor":
-        eps = 1.3e-7  # Slightly higher than actual epsilon in fp32
-    else:
-        eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
+    eps = 2.3e-16  # Slightly higher than actual epsilon in fp64
 
     # Using inline functions for readability:
     bet1 = lambda X: X ** (beta - 1)
     bet2 = lambda X: X ** (beta - 2)
+    # This normalizes the columns of a matrix X by the 2-norm of the respective
+    # columns. Using this instead of sklearn's normalize to explicitly handle
+    # division by zero:
+    l2n = lambda X: (X / (np.sum(np.abs(X) ** 2, axis=0) ** (0.5) + eps).T[np.newaxis, :])
 
-    return outlier * (
-        (data * bet2(data_approx))
-        / (bet1(data_approx) + reg_val * normalize(outlier, p=2, dim=0, eps=eps))
-    )
+    return outlier * ((data * bet2(data_approx)) / (bet1(data_approx) + reg_val * l2n(outlier)))
