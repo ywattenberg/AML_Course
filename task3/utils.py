@@ -214,6 +214,7 @@ def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename)
         print(video_prep.shape)
         video_prep = video_prep.reshape(-1, video_prep.shape[2])
         print(video_prep.shape)
+        video_prep = torch.Tensor(video_prep)
         train_data[i]["video"] = torch_functions.robust_nmf(
             data=video_prep,
             rank=2,
@@ -225,10 +226,10 @@ def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename)
             sum_to_one=False,
         )
 
-        labels = train_data[i]["labels"]
-        train_data[i]["labels"] = transform_label(labels)
-
         produce_gif(train_data[i]["video"], "tmp.gif")
+
+        labels = train_data[i]["label"]
+        train_data[i]["label"] = transform_label(labels)
 
     save_zipped_pickle(train_data, f"data/{new_filename}.pkl")
     # apply NMF to test data
