@@ -7,23 +7,21 @@ from data_aug import augment_sample
 
 
 class HeartDataset(Dataset):
-    def __init__(self, data, path=None, transform=None, device=None, unpack_frames=False):
+    def __init__(self, path, n_batches=1, unpack_frames=False):
+        # path without ending and without batch number
+        # for file test_data_5_112_0.npz the path is test_data_5_112
 
-        if path is None:
-            self.data = data
+        if n_batches > 1:
+            for i in range(n_batches):
+                if i == 0:
+                    self.data = np.load(f"{path}_{i}.npz", allow_pickle=True)
+                else:
+                    self.data = np.concatenate(
+                        (self.data, np.load(f"{path}_{i}.npz", allow_pickle=True))
+                    )
         else:
-            self.data = np.load(path, allow_pickle=True)
-            # self.data = utils.load_zipped_pickle(path)
-
-        if transform is None:
-            self.transform = utils.get_transforms()
-        else:
-            self.transform = transform
-
-        if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        else:
-            self.device = device
+            self.data = np.load(f"{path}_{0}.npz", allow_pickle=True)
+        # self.data = utils.load_zipped_pickle(path)
 
         if unpack_frames:
             self.data = self.unpack_frames()

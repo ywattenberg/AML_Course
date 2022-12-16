@@ -46,7 +46,7 @@ def main():
     model.double()
 
     data_train = dataset.HeartDataset(
-        data=None, path="data/train_data_1_112.npz", unpack_frames=True
+        path="data/train_data_1_112.npz", n_batches=1, unpack_frames=True
     )
 
     pretrain_length = int(len(data_train) * 0.8)

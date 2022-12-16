@@ -120,7 +120,7 @@ def main():
         if end_idx > len(train_data):
             end_idx = len(train_data)
 
-        np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_{i}.npz", train_data[start_idx, end_idx])
+        np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_{i}.npz", train_data[start_idx:end_idx])
     print(f"finished saving train_data")
 
     for i in tqdm(range(len(test_data))):
@@ -167,7 +167,7 @@ def main():
         if end_idx > len(test_data):
             end_idx = len(test_data)
 
-        np.savez(f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_{i}.npz", test_data[start_idx, end_idx])
+        np.savez(f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_{i}.npz", test_data[start_idx:end_idx])
     print(f"saved test_data finished")
 
 
