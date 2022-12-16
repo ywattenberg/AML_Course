@@ -214,7 +214,7 @@ def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename)
         print(video_prep.shape)
         video_prep = video_prep.reshape(-1, video_prep.shape[2])
         print(video_prep.shape)
-        video_prep = torch.Tensor(video_prep)
+        video_prep = torch.Tensor(video_prep).to("cuda:0")
         train_data[i]["video"] = torch_functions.robust_nmf(
             data=video_prep,
             rank=2,
