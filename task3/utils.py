@@ -13,6 +13,7 @@ import warnings
 from sklearn.preprocessing import StandardScaler
 from scipy.ndimage import convolve
 import robust_nfm
+import torch_functions
 
 warnings.filterwarnings("ignore")
 
@@ -203,7 +204,7 @@ def high_pass_filter(video, dimensions, sigma):
     return video
 
 
-def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename):
+def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename, device):
     # load data
     train_data = load_zipped_pickle(f"data/{filename}.pkl")
 
@@ -213,7 +214,7 @@ def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename)
         print(video_prep.shape)
         video_prep = video_prep.reshape(-1, video_prep.shape[2])
         print(video_prep.shape)
-        train_data[i]["video"] = robust_nfm.robust_nmf(
+        train_data[i]["video"] = torch_functions.robust_nmf(
             data=video_prep,
             rank=2,
             max_iter=1000,
