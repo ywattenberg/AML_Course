@@ -82,7 +82,7 @@ def robust_nmf(
     NOTE: init == 'bNMF' applies the same beta parameter as required for rNMF,
     which is nice, but is slow due to multiplicative updates
     """
-    video = torch.Tensor(video).to("cuda:0")
+    data = torch.Tensor(data).to("cuda:0")
     # Utilities:
     # Defining epsilon to protect against division by zero:
     if data.type() == "torch.cuda.FloatTensor":
