@@ -234,5 +234,7 @@ def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename)
         labels = train_data[i]["label"]
         train_data[i]["label"] = transform_label(labels)
 
+        save_zipped_pickle(train_data[:i], f"data/{new_filename}_tmp.pkl")
+
     save_zipped_pickle(train_data, f"data/{new_filename}.pkl")
     # apply NMF to test data
