@@ -6,4 +6,5 @@ __pycache__
 task2/data/*.csv
 task3/data/*.pkl
 task3/data/*.zip
+task3/data/*.npz
 task3/img

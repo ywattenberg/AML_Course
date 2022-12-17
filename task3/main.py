@@ -33,7 +33,7 @@ def test_loop(model, test_loader, loss_fn, epoch):
             size += 1
 
     test_loss /= size
-    print(f"Test Error:     {test_loss:>8f}")
+    print(f"Test Error:     {test_loss:.8f}")
 
     # output = (output > 0.6).float()
 
@@ -67,7 +67,7 @@ def main():
     epochs = 100
 
     for epoch in range(epochs):
-        print(f"------------------------")
+        print(f"--------------------------")
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)

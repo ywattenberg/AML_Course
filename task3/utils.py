@@ -93,6 +93,7 @@ def test_pred():
 #   data: numpy array of shape (height, width, frames)
 #   name: name of the gif
 def produce_gif(data, name):
+    data *= 255
     data = data.astype(np.uint8)
     with imageio.get_writer(name, mode="I") as writer:
         for i in range(data.shape[2]):
