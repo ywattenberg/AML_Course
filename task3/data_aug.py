@@ -56,11 +56,9 @@ def augment_sample(sample):
     transformed_frame = trns(transformed_frame).numpy()
     transformed_label = trns(transformed_label).numpy()
     # transformed_box = trns(transformed_box).numpy()[0]
-
     transformed_frame *= adjust_brightness
 
     transformed_frame += np.random.random(transformed_frame.shape) * noise_level
-
     transformed_frame[transformed_frame > 1] = 1
 
     out_dict = {}
@@ -68,5 +66,5 @@ def augment_sample(sample):
     out_dict["label"] = transformed_label
     # out_dict["box"] = transformed_box
     out_dict["frames"] = sample["frames"]
-    out_dict["label"] = sample["label"]
+    # out_dict["label"] = sample["label"]
     return out_dict

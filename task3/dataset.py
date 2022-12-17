@@ -7,7 +7,7 @@ from data_aug import augment_sample
 
 
 class HeartDataset(Dataset):
-    def __init__(self, path, n_batches=1, unpack_frames=False):
+    def __init__(self, path, n_batches=1, unpack_frames=False, device="cpu"):
         # path without ending and without batch number
         # for file test_data_5_112_0.npz the path is test_data_5_112
 
@@ -25,6 +25,8 @@ class HeartDataset(Dataset):
 
         if unpack_frames:
             self.data = self.unpack_frames()
+
+        self.device = device
 
     def unpack_frames(self, data=None):
         if data is None:
@@ -54,4 +56,6 @@ class HeartDataset(Dataset):
         else:
             item = self.data[idx]
             item = augment_sample(item)
+            item["frame"] = torch.Tensor(item["frame"]).to(self.device)
+            item["label"] = torch.Tensor(item["label"]).to(self.device)
             return (item["frame"], item["label"])

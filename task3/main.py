@@ -1,11 +1,10 @@
 import torch
 import dataset
 import loss
-import numpy as np
 import utils
-import matplotlib.pyplot as plt
 from unet import UNet
-import torchmetrics
+
+DEVICE = "cuda"
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -35,7 +34,12 @@ def test_loop(model, test_loader, loss_fn, epoch):
     test_loss /= size
     print(f"Test Error: {test_loss:>8f} \n")
 
-    output = (output > 0.6).float()
+    # output = (output > 0.6).float()
+
+    x = x.cpu()
+    y = y.cpu()
+    output = output.cpu()
+
     utils.produce_gif(x[0].permute(1, 2, 0).detach().numpy(), f"img/input.gif")
     utils.produce_gif(output[0].permute(1, 2, 0).detach().numpy(), f"img/output.gif")
     utils.produce_gif(y[0].permute(1, 2, 0).int().detach().numpy(), f"img/label.gif")
@@ -43,9 +47,17 @@ def test_loop(model, test_loader, loss_fn, epoch):
 
 def main():
     model = UNet(in_channels=1, out_channels=1, init_features=32)
-    model.double()
 
-    data_train = dataset.HeartDataset(path="data/train_data_1_112", n_batches=1, unpack_frames=True)
+    if DEVICE == "mps":
+        model.float()
+    else:
+        model.double()
+
+    model.to(DEVICE)
+
+    data_train = dataset.HeartDataset(
+        path="data/train_data_1_256", n_batches=3, unpack_frames=True, device=DEVICE
+    )
 
     pretrain_length = int(len(data_train) * 0.8)
     val_length = len(data_train) - pretrain_length
@@ -53,8 +65,8 @@ def main():
         data_train, [pretrain_length, val_length]
     )
 
-    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=64, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(data_val, batch_size=64, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=8, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
     torch.set_grad_enabled(True)
 
     # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
