@@ -88,55 +88,12 @@ def test_pred():
     save_zipped_pickle(predictions, "my_predictions.pkl")
 
 
-def train_loop(model, train_loader, loss_fn, optimizer):
-
-    for batch, (x, y) in enumerate(train_loader):
-        output = model(x)
-        loss = loss_fn(output, y)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        if (batch % 10) == 0:
-            print(f"Batch: {batch}, Loss: {loss.item():.4f}")
-            break
-
-
-def test_loop(model, test_loader, loss_fn, epoch):
-    size = len(test_loader.dataset)
-    test_loss = 0
-
-    with torch.no_grad():
-        for x, y in test_loader:
-            output = model(x)
-            test_loss += loss_fn(output, y).item()
-
-    test_loss /= size
-    print(f"Test Error: {test_loss:>8f} \n")
-
-    print(y.shape)
-
-    output = (output > 0.6).float()
-    produce_gif(output[0].permute(1, 2, 0).detach().numpy(), f"img/output_{epoch}.gif")
-    produce_gif(y[0].permute(1, 2, 0).int().detach().numpy(), f"img//label_{epoch}.gif")
-    # print picture
-    # r = np.random.randint(0, len(test_loader))
-    # x, y = test_loader.dataset[r]
-
-    # with torch.no_grad():
-    #     output = model(x.unsqueeze(0))
-    # plt.imshow(output.permute(1, 2, 0), cmap="gray", vmin=0, vmax=1)
-    # plt.show()
-    # plt.imshow(y.permute(1, 2, 0), cmap="gray", vmin=0, vmax=1)
-    # plt.show()
-
-
 # function to produce a gif from a numpy array
 # inputs:
 #   data: numpy array of shape (height, width, frames)
 #   name: name of the gif
 def produce_gif(data, name):
+    data = data.astype(np.uint8)
     with imageio.get_writer(name, mode="I") as writer:
         for i in range(data.shape[2]):
             image = data[:, :, i]
