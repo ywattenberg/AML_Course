@@ -11,7 +11,7 @@ import utils
 
 TEST = False
 DEVICE = "cuda"
-IMAGE_SIZE = 112
+IMAGE_SIZE = 256
 REG_VAL = 1
 SAVING_BATCHES = 2
 
@@ -47,7 +47,9 @@ def transform_label(label, img_size=IMAGE_SIZE):
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Resize((img_size, img_size)),
+            transforms.Resize(
+                (img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST
+            ),
         ]
     )
     return transform(label)
@@ -120,7 +122,10 @@ def main():
         if end_idx > len(train_data):
             end_idx = len(train_data)
 
-        np.savez(f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_{i}.npz", train_data[start_idx:end_idx])
+        np.savez(
+            f"data/train_data_{REG_VAL}_{IMAGE_SIZE}_{i}.npz",
+            train_data[start_idx:end_idx],
+        )
     print(f"finished saving train_data")
 
     for i in tqdm(range(len(test_data))):
@@ -167,7 +172,10 @@ def main():
         if end_idx > len(test_data):
             end_idx = len(test_data)
 
-        np.savez(f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_{i}.npz", test_data[start_idx:end_idx])
+        np.savez(
+            f"data/test_data_{REG_VAL}_{IMAGE_SIZE}_{i}.npz",
+            test_data[start_idx:end_idx],
+        )
     print(f"saved test_data finished")
 
 
