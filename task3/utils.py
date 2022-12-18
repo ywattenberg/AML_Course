@@ -14,8 +14,20 @@ from sklearn.preprocessing import StandardScaler
 from scipy.ndimage import convolve
 import robust_nfm
 import torch_functions
+import cv2
 
 warnings.filterwarnings("ignore")
+
+
+def post_process_mask(mask, size, erode_it=1, dilate_it=1):
+    T = transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR)
+    tmp = T(mask).permute(1, 2, 0).cpu().detach().numpy()
+    tmp = np.where(tmp > 0.6, 255, 0).astype(np.uint8)
+    kernel = np.ones((6, 6), np.uint8)
+    tmp = cv2.erode(tmp, kernel, iterations=erode_it)
+    tmp = cv2.dilate(tmp, kernel, iterations=dilate_it)
+    tmp = tmp > 200
+    return tmp
 
 
 def get_transforms():
@@ -43,11 +55,13 @@ def transform_data(data):
     return normalized_img
 
 
-def transform_label(label):
+def transform_label(label, width=256, height=256):
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Resize((256, 256)),
+            transforms.Resize(
+                (height, width), interpolation=transforms.InterpolationMode.NEAREST
+            ),
         ]
     )
     normalized_img = transform(label)
@@ -92,8 +106,9 @@ def test_pred():
 # inputs:
 #   data: numpy array of shape (height, width, frames)
 #   name: name of the gif
-def produce_gif(data, name):
-    data *= 255
+def produce_gif(data, name, is_int=False):
+    if not is_int:
+        data *= 255
     data = data.astype(np.uint8)
     with imageio.get_writer(name, mode="I") as writer:
         for i in range(data.shape[2]):
