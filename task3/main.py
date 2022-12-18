@@ -7,7 +7,7 @@ import numpy as np
 from torchvision import transforms
 from unet import UNet
 
-DEVICE = "cuda"
+DEVICE = "cpu"
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -155,7 +155,7 @@ def create_submission(create_gif=False):
 
 
 if __name__ == "__main__":
-    # main()
+    main()
     # evaluate()
     # model = UNet(in_channels=1, out_channels=1, init_features=32)
     # model.load_state_dict(torch.load("model.pth"))
@@ -165,4 +165,4 @@ if __name__ == "__main__":
     #     path="data/test_data_1_256", unpack_frames=True, device=DEVICE
     # )
     # predict_and_save(model, test)
-    create_submission(True)
+    # create_submission(True)
