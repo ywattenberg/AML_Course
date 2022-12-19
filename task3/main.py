@@ -81,7 +81,7 @@ def main():
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)
 
-    torch.save(model.state_dict(), "model{IMAGE_SIZE}_{REG_VAL}{EPOCHS}.pth")
+    torch.save(model.state_dict(), "model_{IMAGE_SIZE}_{REG_VAL}{EPOCHS}.pth")
 
 
 def evaluate():
