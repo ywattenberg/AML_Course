@@ -55,7 +55,6 @@ def main(do_evaluation=False, create_submission=False):
     model.to(DEVICE)
 
     data_train = dataset.HeartDataset(
-<<<<<<< HEAD
         path="data/train_data_1_512", n_batches=4, unpack_frames=True, device=DEVICE
     )
     data_test = dataset.HeartTestDataset(
@@ -63,11 +62,6 @@ def main(do_evaluation=False, create_submission=False):
         n_batches=4,
         unpack_frames=False,
         return_full_data=True,
-=======
-        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
-        n_batches=2,
-        unpack_frames=True,
->>>>>>> a972bd5a8bb62cd0e76b1aee4f2f5bf186f286b9
         device=DEVICE,
     )
 
@@ -77,15 +71,8 @@ def main(do_evaluation=False, create_submission=False):
         data_train, [pretrain_length, val_length]
     )
 
-<<<<<<< HEAD
-    train_loader = torch.utils.data.DataLoader(
-        data_pretrain, batch_size=8, shuffle=True
-    )
+    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=8, shuffle=True)
     val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
-=======
-    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=16, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(data_val, batch_size=16, shuffle=True)
->>>>>>> a972bd5a8bb62cd0e76b1aee4f2f5bf186f286b9
     torch.set_grad_enabled(True)
 
     # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
