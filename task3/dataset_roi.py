@@ -54,13 +54,12 @@ class BoxDataset(Dataset):
                 )
         return unpacked_data
 
-
     def transform_box(self, size, box):
         x, y = size
         transform = transforms.Compose(
             [
-            transforms.ToTensor(),
-            transforms.Resize((x, y)),
+                transforms.ToTensor(),
+                transforms.Resize((x, y)),
             ]
         )
 
@@ -81,5 +80,5 @@ class BoxDataset(Dataset):
         else:
             item = self.data[idx]
             item["frame"] = torch.Tensor(item["frame"]).to(self.device)
-            item["box"].to(self.device)
+            item["box"] = torch.Tensor(item["box"]).to(self.device).int()
             return item["frame"], item["box"]

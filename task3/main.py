@@ -7,7 +7,8 @@ import numpy as np
 from torchvision import transforms
 from unet import UNet
 
-DEVICE = "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -41,9 +42,7 @@ def test_loop(model, test_loader, loss_fn, epoch):
     # output = (output > 0.6).float()
 
     utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(
-        output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
-    )
+    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
 
@@ -61,9 +60,7 @@ def main():
         data_train, [pretrain_length, val_length]
     )
 
-    train_loader = torch.utils.data.DataLoader(
-        data_pretrain, batch_size=32, shuffle=True
-    )
+    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=32, shuffle=True)
     val_loader = torch.utils.data.DataLoader(data_val, batch_size=32, shuffle=True)
     torch.set_grad_enabled(True)
 

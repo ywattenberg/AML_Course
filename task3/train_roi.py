@@ -9,6 +9,8 @@ from torch.utils.data import DataLoader
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
+
 
 def train_loop(model, train_loader, loss_fn, optimizer):
 
@@ -40,18 +42,17 @@ def test_loop(model, test_loader, loss_fn, epoch):
 
     # output = (output > 0.6).float()
 
-    utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(
-        output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
-    )
+    utils.produce_gif(x[0].unsqueeze(1).permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
+    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
+
 
 def main():
     train_data = dataset_roi.BoxDataset(
         path="data/train_data_1_256", n_batches=4, unpack_frames=True, device=DEVICE
     )
 
-    pretrain_length = int (len(train_data) * 0.8)
+    pretrain_length = int(len(train_data) * 0.8)
     val_length = len(train_data) - pretrain_length
     train_data, val_data = torch.utils.data.random_split(train_data, [pretrain_length, val_length])
     train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
@@ -71,7 +72,5 @@ def main():
         test_loop(model, val_loader, loss_fn, epoch)
 
 
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
