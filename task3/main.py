@@ -10,6 +10,10 @@ from unet import UNet
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
+REG_VAL = 1
+IMAGE_SIZE = 256
+EPOCHS = 100
+
 
 def train_loop(model, train_loader, loss_fn, optimizer):
 
@@ -51,7 +55,10 @@ def main():
     model.to(DEVICE)
 
     data_train = dataset.HeartDataset(
-        path="data/train_data_1_256", n_batches=2, unpack_frames=True, device=DEVICE
+        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
+        n_batches=2,
+        unpack_frames=True,
+        device=DEVICE,
     )
 
     pretrain_length = int(len(data_train) * 0.8)
@@ -68,15 +75,13 @@ def main():
     loss_fn = loss.JaccardLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    epochs = 100
-
-    for epoch in range(epochs):
+    for epoch in range(EPOCHS):
         print(f"--------------------------")
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)
 
-    torch.save(model.state_dict(), "model.pth")
+    torch.save(model.state_dict(), "model{IMAGE_SIZE}_{REG_VAL}{EPOCHS}.pth")
 
 
 def evaluate():

@@ -11,6 +11,10 @@ from torch.utils.data import DataLoader
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
+REG_VAL = 1
+IMAGE_SIZE = 256
+EPOCHS = 100
+
 
 def train_loop(model, train_loader, loss_fn, optimizer):
 
@@ -49,7 +53,10 @@ def test_loop(model, test_loader, loss_fn, epoch):
 
 def main():
     train_data = dataset_roi.BoxDataset(
-        path="data/train_data_1_256", n_batches=4, unpack_frames=True, device=DEVICE
+        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
+        n_batches=4,
+        unpack_frames=True,
+        device=DEVICE,
     )
 
     pretrain_length = int(len(train_data) * 0.8)
@@ -63,13 +70,13 @@ def main():
     loss_fn = loss.JaccardLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    epochs = 100
-
-    for epoch in range(epochs):
+    for epoch in range(EPOCHS):
         print(f"--------------------------")
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)
+
+    torch.save(model.state_dict(), "model{IMAGE_SIZE}_{REG_VAL}{EPOCHS}.pth")
 
 
 if __name__ == "__main__":
