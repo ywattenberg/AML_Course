@@ -12,7 +12,7 @@ DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 REG_VAL = 1
 IMAGE_SIZE = 256
-EPOCHS = 100
+EPOCHS = 400
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -67,8 +67,8 @@ def main():
         data_train, [pretrain_length, val_length]
     )
 
-    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=32, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(data_val, batch_size=32, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=16, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(data_val, batch_size=16, shuffle=True)
     torch.set_grad_enabled(True)
 
     # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
@@ -80,7 +80,8 @@ def main():
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)
-
+        if epoch % 100 == 0 and epoch != 0:
+            torch.save(model.state_dict(), "model_{IMAGE_SIZE}_{REG_VAL}{epoch}.pth")
     torch.save(model.state_dict(), "model_{IMAGE_SIZE}_{REG_VAL}{EPOCHS}.pth")
 
 

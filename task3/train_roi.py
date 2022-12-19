@@ -62,8 +62,8 @@ def main():
     pretrain_length = int(len(train_data) * 0.8)
     val_length = len(train_data) - pretrain_length
     train_data, val_data = torch.utils.data.random_split(train_data, [pretrain_length, val_length])
-    train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=32, shuffle=True)
+    train_loader = DataLoader(train_data, batch_size=8, shuffle=True)
+    val_loader = DataLoader(val_data, batch_size=8, shuffle=True)
 
     model = rcnn.RCnn(in_channels=1, out_channels=1, init_features=32)
     model.to(DEVICE)
@@ -76,7 +76,7 @@ def main():
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)
 
-    torch.save(model.state_dict(), "model_{IMAGE_SIZE}_{REG_VAL}{EPOCHS}.pth")
+    torch.save(model.state_dict(), "model_box.pth")
 
 
 if __name__ == "__main__":
