@@ -7,7 +7,12 @@ import numpy as np
 from torchvision import transforms
 from unet import UNet
 
-DEVICE = "cuda"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
+
+REG_VAL = 1
+IMAGE_SIZE = 256
+EPOCHS = 400
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -41,9 +46,7 @@ def test_loop(model, test_loader, loss_fn, epoch):
     # output = (output > 0.6).float()
 
     utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(
-        output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
-    )
+    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
 
@@ -52,6 +55,7 @@ def main(do_evaluation=False, create_submission=False):
     model.to(DEVICE)
 
     data_train = dataset.HeartDataset(
+<<<<<<< HEAD
         path="data/train_data_1_512", n_batches=4, unpack_frames=True, device=DEVICE
     )
     data_test = dataset.HeartTestDataset(
@@ -59,6 +63,11 @@ def main(do_evaluation=False, create_submission=False):
         n_batches=4,
         unpack_frames=False,
         return_full_data=True,
+=======
+        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
+        n_batches=2,
+        unpack_frames=True,
+>>>>>>> a972bd5a8bb62cd0e76b1aee4f2f5bf186f286b9
         device=DEVICE,
     )
 
@@ -68,25 +77,29 @@ def main(do_evaluation=False, create_submission=False):
         data_train, [pretrain_length, val_length]
     )
 
+<<<<<<< HEAD
     train_loader = torch.utils.data.DataLoader(
         data_pretrain, batch_size=8, shuffle=True
     )
     val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
+=======
+    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=16, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(data_val, batch_size=16, shuffle=True)
+>>>>>>> a972bd5a8bb62cd0e76b1aee4f2f5bf186f286b9
     torch.set_grad_enabled(True)
 
     # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
     loss_fn = loss.JaccardLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    epochs = 100
-
-    for epoch in range(epochs):
+    for epoch in range(EPOCHS):
         print(f"--------------------------")
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)
-
-    torch.save(model.state_dict(), "model.pth")
+        if epoch % 100 == 0 and epoch != 0:
+            torch.save(model.state_dict(), "model_{IMAGE_SIZE}_{REG_VAL}{epoch}.pth")
+    torch.save(model.state_dict(), "model_{IMAGE_SIZE}_{REG_VAL}{EPOCHS}.pth")
 
     if do_evaluation:
         model.eval()
@@ -136,3 +149,16 @@ def submit(
 
 if __name__ == "__main__":
     main()
+<<<<<<< HEAD
+=======
+    # evaluate()
+    # model = UNet(in_channels=1, out_channels=1, init_features=32)
+    # model.load_state_dict(torch.load("model.pth"))
+    # model.eval()
+    # model.to(DEVICE)
+    # test = dataset.HeartTestDataset(
+    #     path="data/test_data_1_256", unpack_frames=True, device=DEVICE
+    # )
+    # predict_and_save(model, test)
+    # create_submission(True)
+>>>>>>> a972bd5a8bb62cd0e76b1aee4f2f5bf186f286b9

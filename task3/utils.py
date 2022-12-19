@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from scipy.ndimage import convolve
 import robust_nfm
 import torch_functions
-import cv2
+# import cv2
 
 warnings.filterwarnings("ignore")
 
@@ -212,3 +212,45 @@ def modify_data_with_rnfm(filename, regularization, reg_parameter, new_filename)
 
     save_zipped_pickle(train_data, f"data/{new_filename}.pkl")
     # apply NMF to test data
+
+
+def get_windows(frame, window_size, stride):
+    # data: numpy array of shape (height, width, frames)
+    # window_size: size of the window
+    # stride: stride of the window
+    # returns: numpy array of shape (height, width, frames, windows)
+    windows = []
+    x,y = window_size
+    stride_x, stride_y = stride
+
+    for i in range(0, frame.shape[0] - x, stride_x):
+        for j in range(0, frame.shape[1] - y, stride_y):
+            windows.append(frame[i : i + window_size, j : j + window_size, :])
+    
+    return np.stack(windows, axis=2)
+
+
+
+
+def find_roi(frame, window_size, stride):
+    # windows = get_windows(frame, window_size, stride)
+    x,y = window_size
+    stride_x, stride_y = stride
+
+    max_norm = 0
+    max_window = None
+    max_region = None
+    for i in range(0, frame.shape[0] - x, stride_x):
+        for j in range(0, frame.shape[1] - y, stride_y):
+            tmp = frame[i : i + x, j : j + y]
+            fb_norm = np.linalg.norm(tmp, ord='fro')
+
+            if fb_norm > max_norm:
+                max_norm = fb_norm
+                max_window = (i, j, i + x, j + y)
+                max_region = tmp
+    
+    # plt.imshow(max_region, cmap='gray')
+    # plt.show()
+
+    return max_window, max_region
