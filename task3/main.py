@@ -11,8 +11,8 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 REG_VAL = 1
-IMAGE_SIZE = 256
-EPOCHS = 400
+IMAGE_SIZE = 512
+EPOCHS = 100
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -46,11 +46,14 @@ def test_loop(model, test_loader, loss_fn, epoch):
     # output = (output > 0.6).float()
 
     utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
+    utils.produce_gif(
+        output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
+    )
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
 
-def main(do_evaluation=False, create_submission=False):
+def main(train=True, do_evaluation=False, create_submission=False):
+
     model = UNet(in_channels=1, out_channels=1, init_features=32)
     model.to(DEVICE)
 
@@ -71,7 +74,9 @@ def main(do_evaluation=False, create_submission=False):
         data_train, [pretrain_length, val_length]
     )
 
-    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=8, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(
+        data_pretrain, batch_size=8, shuffle=True
+    )
     val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
     torch.set_grad_enabled(True)
 
@@ -79,14 +84,23 @@ def main(do_evaluation=False, create_submission=False):
     loss_fn = loss.JaccardLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    for epoch in range(EPOCHS):
-        print(f"--------------------------")
-        print("Epoch: {}".format(epoch))
-        train_loop(model, train_loader, loss_fn, optimizer)
-        test_loop(model, val_loader, loss_fn, epoch)
-        if epoch % 100 == 0 and epoch != 0:
-            torch.save(model.state_dict(), "model_{IMAGE_SIZE}_{REG_VAL}{epoch}.pth")
-    torch.save(model.state_dict(), "model_{IMAGE_SIZE}_{REG_VAL}{EPOCHS}.pth")
+    if train:
+        for epoch in range(EPOCHS):
+            print(f"--------------------------")
+            print("Epoch: {}".format(epoch))
+            train_loop(model, train_loader, loss_fn, optimizer)
+            test_loop(model, val_loader, loss_fn, epoch)
+            if epoch % 100 == 0 and epoch != 0:
+                torch.save(
+                    model.state_dict(), f"model_{IMAGE_SIZE}_{REG_VAL}_{epoch}.pth"
+                )
+        torch.save(model.state_dict(), f"model_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pth")
+    else:
+        model.load_state_dict(
+            torch.load(
+                f"model_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pth", map_location=DEVICE
+            )
+        )
 
     if do_evaluation:
         model.eval()
@@ -99,6 +113,7 @@ def main(do_evaluation=False, create_submission=False):
 def submit(
     model,
     test,
+    batch_size=8,
     create_gif=False,
 ):
     model.eval()
@@ -107,7 +122,12 @@ def submit(
     submission = []
     for data in test:
         name = data["name"]
-        output = model(data["nmf"].unsqueeze(1).to(DEVICE))
+        output = []
+        for frame in range(0, data["nmf"].shape[0], batch_size):
+            lim = min(frame + batch_size, data["nmf"].shape[0])
+            output.append(model(data["nmf"][frame:lim].unsqueeze(1).to(DEVICE)))
+
+        output = torch.cat(output, dim=0)
         output = output.squeeze()
         submission.append({"name": name, "prediction": output})
 
@@ -135,9 +155,7 @@ def submit(
 
 
 if __name__ == "__main__":
-    main()
-<<<<<<< HEAD
-=======
+    main(train=False, do_evaluation=True, create_submission=True)
     # evaluate()
     # model = UNet(in_channels=1, out_channels=1, init_features=32)
     # model.load_state_dict(torch.load("model.pth"))
@@ -148,4 +166,3 @@ if __name__ == "__main__":
     # )
     # predict_and_save(model, test)
     # create_submission(True)
->>>>>>> a972bd5a8bb62cd0e76b1aee4f2f5bf186f286b9
