@@ -47,12 +47,19 @@ def test_loop(model, test_loader, loss_fn, epoch):
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
 
-def main():
+def main(do_evaluation=False, create_submission=False):
     model = UNet(in_channels=1, out_channels=1, init_features=32)
     model.to(DEVICE)
 
     data_train = dataset.HeartDataset(
-        path="data/train_data_1_256", n_batches=2, unpack_frames=True, device=DEVICE
+        path="data/train_data_1_512", n_batches=4, unpack_frames=True, device=DEVICE
+    )
+    data_test = dataset.HeartTestDataset(
+        path="data/test_data_1_512",
+        n_batches=4,
+        unpack_frames=False,
+        return_full_data=True,
+        device=DEVICE,
     )
 
     pretrain_length = int(len(data_train) * 0.8)
@@ -62,9 +69,9 @@ def main():
     )
 
     train_loader = torch.utils.data.DataLoader(
-        data_pretrain, batch_size=32, shuffle=True
+        data_pretrain, batch_size=8, shuffle=True
     )
-    val_loader = torch.utils.data.DataLoader(data_val, batch_size=32, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
     torch.set_grad_enabled(True)
 
     # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
@@ -81,48 +88,21 @@ def main():
 
     torch.save(model.state_dict(), "model.pth")
 
+    if do_evaluation:
+        model.eval()
+        print("Evaluating model")
+        test_loop(model, val_loader, loss_fn, 0)
+    if create_submission:
+        submit(model, data_test, True)
 
-def evaluate():
-    model = UNet(in_channels=1, out_channels=1, init_features=32)
-    model.load_state_dict(torch.load("model.pth"))
+
+def submit(
+    model,
+    test,
+    create_gif=False,
+):
     model.eval()
-    model.to(DEVICE)
 
-    data_train = dataset.HeartDataset(
-        path="data/train_data_1_256", n_batches=2, unpack_frames=True, device=DEVICE
-    )
-
-    test_loader = torch.utils.data.DataLoader(data_train, batch_size=32, shuffle=True)
-    torch.set_grad_enabled(False)
-
-    loss_fn = loss.JaccardLoss()
-    print("Evaluating model")
-    test_loop(model, test_loader, loss_fn, 0)
-
-
-def predict_and_save(model, test_loader):
-    model.eval()
-    with torch.no_grad():
-        for i in range(0, 501, 100):
-            output = model(test_loader[i][0].unsqueeze(0).to(DEVICE))
-            f, axarr = plt.subplots(1, 2)
-            axarr[0].imshow(test_loader[i][0].squeeze().cpu().detach().numpy())
-            axarr[1].imshow(output.squeeze().cpu().detach().numpy())
-            plt.savefig(f"pred_img/pred_{i}.png")
-
-
-def create_submission(create_gif=False):
-    model = UNet(in_channels=1, out_channels=1, init_features=32)
-    model.load_state_dict(torch.load("model.pth"))
-    model.eval()
-    model.to(DEVICE)
-    test = dataset.HeartTestDataset(
-        path="data/test_data_1_256",
-        n_batches=2,
-        unpack_frames=False,
-        return_full_data=True,
-        device=DEVICE,
-    )
     torch.set_grad_enabled(False)
     submission = []
     for data in test:
@@ -155,14 +135,4 @@ def create_submission(create_gif=False):
 
 
 if __name__ == "__main__":
-    # main()
-    # evaluate()
-    # model = UNet(in_channels=1, out_channels=1, init_features=32)
-    # model.load_state_dict(torch.load("model.pth"))
-    # model.eval()
-    # model.to(DEVICE)
-    # test = dataset.HeartTestDataset(
-    #     path="data/test_data_1_256", unpack_frames=True, device=DEVICE
-    # )
-    # predict_and_save(model, test)
-    create_submission(True)
+    main()
