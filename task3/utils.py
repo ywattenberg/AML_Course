@@ -281,7 +281,7 @@ def overlay_segmentation(frame, segmentation, filename, box=None, true_label=Non
     
     cmap = plt.cm.tab20(np.arange(layers))
     
-    fig = overlay_masks(frame, masks, colors=cmap, mask_alpha=0.5)
+    fig = overlay_masks(frame, masks, labels=mask_labels, colors=cmap, mask_alpha=0.5)
     fig.savefig(f"{filename}.png", bbox_inches="tight", dpi=300)
 
     return frame
