@@ -15,7 +15,8 @@ from scipy.ndimage import convolve
 import robust_nfm
 import torch_functions
 import cv2
-from segmentation_mask_overlay import overlay_masks
+
+# from segmentation_mask_overlay import overlay_masks
 
 
 warnings.filterwarnings("ignore")
@@ -62,9 +63,7 @@ def transform_label(label, width=256, height=256):
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Resize(
-                (height, width), interpolation=transforms.InterpolationMode.NEAREST
-            ),
+            transforms.Resize((height, width), interpolation=transforms.InterpolationMode.NEAREST),
         ]
     )
     normalized_img = transform(label)
@@ -117,6 +116,7 @@ def produce_gif(data, name, is_int=False):
         for i in range(data.shape[2]):
             image = data[:, :, i]
             writer.append_data(image)
+
 
 def produce_gif_colour(data, name):
     with imageio.get_writer(name, mode="I") as writer:
@@ -228,21 +228,19 @@ def get_windows(frame, window_size, stride):
     # stride: stride of the window
     # returns: numpy array of shape (height, width, frames, windows)
     windows = []
-    x,y = window_size
+    x, y = window_size
     stride_x, stride_y = stride
 
     for i in range(0, frame.shape[0] - x, stride_x):
         for j in range(0, frame.shape[1] - y, stride_y):
             windows.append(frame[i : i + window_size, j : j + window_size, :])
-    
+
     return np.stack(windows, axis=2)
-
-
 
 
 def find_roi(frame, window_size, stride):
     # windows = get_windows(frame, window_size, stride)
-    x,y = window_size
+    x, y = window_size
     stride_x, stride_y = stride
 
     max_norm = 0
@@ -251,41 +249,49 @@ def find_roi(frame, window_size, stride):
     for i in range(0, frame.shape[0] - x, stride_x):
         for j in range(0, frame.shape[1] - y, stride_y):
             tmp = frame[i : i + x, j : j + y]
-            fb_norm = np.linalg.norm(tmp, ord='fro')
+            fb_norm = np.linalg.norm(tmp, ord="fro")
 
             if fb_norm > max_norm:
                 max_norm = fb_norm
                 max_window = (i, j, i + x, j + y)
                 max_region = tmp
-    
+
     # plt.imshow(max_region, cmap='gray')
     # plt.show()
 
     return max_window, max_region
 
 
-def overlay_segmentation(frame, segmentation, filename, box=None, true_label=None, convert_seg_to_bool=False, threshold=0.9):
+def overlay_segmentation(
+    frame,
+    segmentation,
+    filename,
+    box=None,
+    true_label=None,
+    convert_seg_to_bool=False,
+    threshold=0.9,
+):
     if convert_seg_to_bool:
         segmentation = np.where(segmentation > threshold, True, False)
-    
+
     masks = []
     masks.append(segmentation)
     mask_labels = ["segmentation"]
     layers = 1
-    
+
     if box is not None:
         layers += 1
         masks.append(box)
         mask_labels.append("box")
-    
+
     if true_label is not None:
         layers += 1
         masks.append(true_label)
         mask_labels.append("true label")
-    
+
     cmap = plt.cm.tab20(np.arange(layers))
-    
-    plt.figure(figsize=(3,3), dpi=300)
+
+    plt.figure(figsize=(3, 3), dpi=300)
     fig = overlay_masks(frame, masks, labels=mask_labels, colors=cmap, mask_alpha=0.5)
     fig.savefig(f"{filename}.png", bbox_inches="tight", dpi=300)
 

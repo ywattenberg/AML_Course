@@ -7,6 +7,7 @@ from data_aug import augment_sample
 
 BOX_SHAPE = (256, 256)
 
+
 class HeartDataset(Dataset):
     def __init__(self, path, n_batches=1, unpack_frames=False, device="cpu"):
         # path without ending and without batch number
@@ -95,7 +96,7 @@ class InterpolatedHeartDataset(HeartDataset):
                 self.data[idx + 1],
                 self.data[idx + 2],
             ]
-        elif idx == len(self.data) - 2:
+        elif idx == len(self.data) - 1:
             items = [
                 self.data[idx - 2],
                 self.data[idx - 1],
@@ -103,7 +104,7 @@ class InterpolatedHeartDataset(HeartDataset):
                 self.data[idx],
                 self.data[idx],
             ]
-        elif idx > len(self.data) - 3:
+        elif idx == len(self.data) - 2:
             items = [
                 self.data[idx - 2],
                 self.data[idx - 1],
@@ -124,11 +125,13 @@ class InterpolatedHeartDataset(HeartDataset):
 
         for i in range(len(items)):
             items[i] = augment_sample(items[i], augment_label=False)
-            frames[i] = torch.Tensor(items[i]["frame"]).to(self.device)
+            frames[i] = torch.Tensor(items[i]["frame"])
 
-        label = torch.Tensor(self.data[idx]["label"]).to(self.device)
+        label = torch.Tensor(self.data[idx]["label"])
         label = label.unsqueeze(1).permute(1, 0, 2)
-        return (frames, label)
+        frames = frames.to(self.device)
+        label = label.to(self.device)
+        return (frames, label, torch.Tensor())
 
 
 class HeartTestDataset(Dataset):

@@ -11,8 +11,8 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 REG_VAL = 1
-IMAGE_SIZE = 512
-EPOCHS = 100
+IMAGE_SIZE = 256
+EPOCHS = 400
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -57,10 +57,13 @@ def main(train=True, do_evaluation=False, create_submission=False):
     model.to(DEVICE)
 
     data_train = dataset.InterpolatedHeartDataset(
-        path="data/train_data_1_256", n_batches=4, unpack_frames=True, device=DEVICE
+        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
+        n_batches=4,
+        unpack_frames=True,
+        device=DEVICE,
     )
     data_test = dataset.HeartTestDataset(
-        path="data/test_data_1_256",
+        path=f"data/test_data_{REG_VAL}_{IMAGE_SIZE}",
         n_batches=4,
         unpack_frames=False,
         return_full_data=True,
@@ -82,6 +85,7 @@ def main(train=True, do_evaluation=False, create_submission=False):
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     if train:
+        print(EPOCHS)
         for epoch in range(EPOCHS):
             print(f"--------------------------")
             print("Epoch: {}".format(epoch))
