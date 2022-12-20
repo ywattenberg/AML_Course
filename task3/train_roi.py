@@ -13,7 +13,7 @@ DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 REG_VAL = 1
 IMAGE_SIZE = 256
-EPOCHS = 100
+EPOCHS = 50
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -26,7 +26,7 @@ def train_loop(model, train_loader, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
-        if (batch % 10) == 0:
+        if (batch % 50) == 0:
             print(f"Batch: {batch}, Loss: {loss.item():.8f}")
             # break
 
@@ -75,8 +75,11 @@ def main():
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)
+        
+        if epoch % 10 == 0:
+            torch.save(model.state_dict(), f"model_box_all_data_{epoch}.pth")
 
-    torch.save(model.state_dict(), "model_box.pth")
+    torch.save(model.state_dict(), "model_box_all_data_final.pth")
 
 
 if __name__ == "__main__":

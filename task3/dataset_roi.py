@@ -39,16 +39,15 @@ class BoxDataset(Dataset):
 
         unpacked_data = []
         for entry in data:
-            for frame in entry["frames"]:
+            number_of_frames = entry["nmf"].shape[0]
+            for i in range(number_of_frames):
                 box_transformed = self.transform_box(BOX_SHAPE, entry["box"])
                 unpacked_data.append(
                     {
                         "name": entry["name"],
-                        "frame": entry["nmf"][frame, :, :].numpy().astype(np.float64),
-                        "frames": [frame],
+                        "frame": entry["nmf"][i, :, :].numpy().astype(np.float64),
                         "box": box_transformed,
                         "box_coordinates": self.get_coordinates_box(box_transformed),
-                        "label": entry["label"][frame, :, :],
                         "dataset": entry["dataset"],
                     }
                 )

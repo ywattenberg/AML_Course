@@ -7,6 +7,8 @@ from PIL import Image, ImageFilter
 from matplotlib import cm
 from scipy.ndimage import convolve
 import robust_nfm
+import os
+import cv2
 
 import warnings
 
@@ -27,7 +29,26 @@ def gaussian_filter(shape, sigma):
     return h
 
 
-data = utils.load_zipped_pickle("data/train.pkl")
+sub = utils.load_zipped_pickle("submission_256_1_200.pkl")
+print(sub)
+
+# data = utils.load_zipped_pickle("data/train.pkl")
+
+folder = "results/0"
+
+images = []
+for filename in os.listdir(folder):
+    if not filename.startswith("."):
+        img = cv2.imread(os.path.join(folder,filename))
+        images.append(img)
+    
+# print(np.array(images).shape)
+images = np.array(images)
+print(images.shape)
+
+# utils.produce_gif_colour(images, "sub.gif")
+
+quit()
 
 # for i in range(1):
 #     fig = plt.figure(figsize=(10, 10))

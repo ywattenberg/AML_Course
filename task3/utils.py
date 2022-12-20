@@ -14,7 +14,9 @@ from sklearn.preprocessing import StandardScaler
 from scipy.ndimage import convolve
 import robust_nfm
 import torch_functions
-# import cv2
+import cv2
+from segmentation_mask_overlay import overlay_masks
+
 
 warnings.filterwarnings("ignore")
 
@@ -114,6 +116,12 @@ def produce_gif(data, name, is_int=False):
     with imageio.get_writer(name, mode="I") as writer:
         for i in range(data.shape[2]):
             image = data[:, :, i]
+            writer.append_data(image)
+
+def produce_gif_colour(data, name):
+    with imageio.get_writer(name, mode="I") as writer:
+        for i in range(data.shape[0]):
+            image = data[i, :, :, :]
             writer.append_data(image)
 
 
@@ -254,3 +262,31 @@ def find_roi(frame, window_size, stride):
     # plt.show()
 
     return max_window, max_region
+
+
+def overlay_segmentation(frame, segmentation, filename, box=None, true_label=None, convert_seg_to_bool=False, threshold=0.9):
+    if convert_seg_to_bool:
+        segmentation = np.where(segmentation > threshold, True, False)
+    
+    masks = []
+    masks.append(segmentation)
+    mask_labels = ["segmentation"]
+    layers = 1
+    
+    if box is not None:
+        layers += 1
+        masks.append(box)
+        mask_labels.append("box")
+    
+    if true_label is not None:
+        layers += 1
+        masks.append(true_label)
+        mask_labels.append("true label")
+    
+    cmap = plt.cm.tab20(np.arange(layers))
+    
+    plt.figure(figsize=(3,3), dpi=300)
+    fig = overlay_masks(frame, masks, labels=mask_labels, colors=cmap, mask_alpha=0.5)
+    fig.savefig(f"{filename}.png", bbox_inches="tight", dpi=300)
+
+    return frame
