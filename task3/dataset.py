@@ -64,8 +64,64 @@ class HeartDataset(Dataset):
             return (item["frame"], item["label"])
 
 
+class InterpolatedHeartDataset(HeartDataset):
+    def __getitem__(self, idx):
+        if idx == 0:
+            items = [
+                self.data[idx],
+                self.data[idx],
+                self.data[idx],
+                self.data[idx + 1],
+                self.data[idx + 2],
+            ]
+        if idx == 1:
+            items = [
+                self.data[idx - 1],
+                self.data[idx - 1],
+                self.data[idx],
+                self.data[idx + 1],
+                self.data[idx + 2],
+            ]
+        elif idx == len(self.data) - 2:
+            items = [
+                self.data[idx - 2],
+                self.data[idx - 1],
+                self.data[idx],
+                self.data[idx],
+                self.data[idx],
+            ]
+        elif idx > len(self.data) - 3:
+            items = [
+                self.data[idx - 2],
+                self.data[idx - 1],
+                self.data[idx],
+                self.data[idx + 1],
+                self.data[idx + 1],
+            ]
+        else:
+            items = [
+                self.data[idx - 2],
+                self.data[idx - 1],
+                self.data[idx],
+                self.data[idx + 1],
+                self.data[idx + 2],
+            ]
+
+        frames = torch.Tensor(5, 256, 256)
+
+        for i in range(len(items)):
+            items[i] = augment_sample(items[i], augment_label=False)
+            frames[i] = torch.Tensor(items[i]["frame"]).to(self.device)
+
+        label = torch.Tensor(self.data[idx]["label"]).to(self.device)
+        label = label.unsqueeze(1).permute(1, 0, 2)
+        return (frames, label)
+
+
 class HeartTestDataset(Dataset):
-    def __init__(self, path, n_batches=1, unpack_frames=False, return_full_data=False, device="cpu"):
+    def __init__(
+        self, path, n_batches=1, unpack_frames=False, return_full_data=False, device="cpu"
+    ):
         # path without ending and without batch number
         # for file test_data_5_112_0.npz the path is test_data_5_112
         self.return_full_data = return_full_data

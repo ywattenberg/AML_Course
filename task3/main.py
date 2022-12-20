@@ -9,9 +9,10 @@ from unet import UNet
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
+DEVICE = "cpu"
 
 REG_VAL = 1
-IMAGE_SIZE = 512
+IMAGE_SIZE = 256
 EPOCHS = 100
 
 
@@ -46,22 +47,21 @@ def test_loop(model, test_loader, loss_fn, epoch):
     # output = (output > 0.6).float()
 
     utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(
-        output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
-    )
+    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
 
 def main(train=True, do_evaluation=False, create_submission=False):
 
-    model = UNet(in_channels=1, out_channels=1, init_features=32)
+    model = UNet(in_channels=5, out_channels=1, init_features=32)
+    # model = Generic_UNetPlusPlus(1, base_num_features=32, num_classes=1)
     model.to(DEVICE)
 
-    data_train = dataset.HeartDataset(
-        path="data/train_data_1_512", n_batches=4, unpack_frames=True, device=DEVICE
+    data_train = dataset.InterpolatedHeartDataset(
+        path="data/train_data_1_256", n_batches=4, unpack_frames=True, device=DEVICE
     )
     data_test = dataset.HeartTestDataset(
-        path="data/test_data_1_512",
+        path="data/test_data_1_256",
         n_batches=4,
         unpack_frames=False,
         return_full_data=True,
@@ -74,9 +74,7 @@ def main(train=True, do_evaluation=False, create_submission=False):
         data_train, [pretrain_length, val_length]
     )
 
-    train_loader = torch.utils.data.DataLoader(
-        data_pretrain, batch_size=8, shuffle=True
-    )
+    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=8, shuffle=True)
     val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
     torch.set_grad_enabled(True)
 
@@ -91,15 +89,11 @@ def main(train=True, do_evaluation=False, create_submission=False):
             train_loop(model, train_loader, loss_fn, optimizer)
             test_loop(model, val_loader, loss_fn, epoch)
             if epoch % 100 == 0 and epoch != 0:
-                torch.save(
-                    model.state_dict(), f"model_{IMAGE_SIZE}_{REG_VAL}_{epoch}.pth"
-                )
+                torch.save(model.state_dict(), f"model_{IMAGE_SIZE}_{REG_VAL}_{epoch}.pth")
         torch.save(model.state_dict(), f"model_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pth")
     else:
         model.load_state_dict(
-            torch.load(
-                f"model_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pth", map_location=DEVICE
-            )
+            torch.load(f"model_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pth", map_location=DEVICE)
         )
 
     if do_evaluation:
@@ -155,7 +149,7 @@ def submit(
 
 
 if __name__ == "__main__":
-    main(train=False, do_evaluation=True, create_submission=True)
+    main(train=True, do_evaluation=False, create_submission=False)
     # evaluate()
     # model = UNet(in_channels=1, out_channels=1, init_features=32)
     # model.load_state_dict(torch.load("model.pth"))
