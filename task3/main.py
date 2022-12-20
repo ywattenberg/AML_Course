@@ -56,7 +56,7 @@ def main(train=True, do_evaluation=False, create_submission=False):
     # model = Generic_UNetPlusPlus(1, base_num_features=32, num_classes=1)
     model.to(DEVICE)
 
-    data_train = dataset.HeartDataset(
+    data_train = dataset.InterpolatedHeartDataset(
         path="data/train_data_1_512", n_batches=4, unpack_frames=True, device=DEVICE
     )
     data_test = dataset.HeartTestDataset(
