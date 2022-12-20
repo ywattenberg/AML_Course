@@ -5,20 +5,20 @@ from PIL import Image
 import os
 
 ORIGINAL_DATA = "data/test.pkl"
-SEGMENTATION = "submission.pkl"
+SEGMENTATION = "submission_256_1_200.pkl"
 BOX = None
 FOLDER = "results"
 
 
 def main():
-    if not os.path.exists("FOLDER"):
-        os.mkdir("FOLDER")
+    if not os.path.exists(FOLDER):
+        os.mkdir(FOLDER)
 
     original_data = utils.load_zipped_pickle(ORIGINAL_DATA)
     segmentation = utils.load_zipped_pickle(SEGMENTATION)
     
     
-    for i in range(2):
+    for i in range(1):
         orig_vid = original_data[i]["video"]
         seg_vid = segmentation[i]["prediction"]
         assert(orig_vid.shape == seg_vid.shape)

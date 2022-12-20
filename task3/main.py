@@ -84,9 +84,9 @@ def main(train=True, do_evaluation=False, create_submission=False):
     )
 
     train_loader = torch.utils.data.DataLoader(
-        data_pretrain, batch_size=16, shuffle=True
+        data_pretrain, batch_size=32, shuffle=True
     )
-    val_loader = torch.utils.data.DataLoader(data_val, batch_size=16, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(data_val, batch_size=32, shuffle=True)
     torch.set_grad_enabled(True)
 
     # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
