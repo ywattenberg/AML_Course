@@ -5,6 +5,7 @@ import utils
 import numpy as np
 from data_aug import augment_sample
 
+BOX_SHAPE = (256, 256)
 
 class HeartDataset(Dataset):
     def __init__(self, path, n_batches=1, unpack_frames=False, device="cpu"):
@@ -43,7 +44,7 @@ class HeartDataset(Dataset):
                         "name": entry["name"],
                         "frame": entry["nmf"][frame, :, :].numpy().astype(np.float64),
                         "frames": [frame],
-                        "box": entry["box"],
+                        "box": self.transform_box(BOX_SHAPE, entry["box"]),
                         "label": entry["label"][frame, :, :],
                         "dataset": entry["dataset"],
                     }
@@ -53,15 +54,27 @@ class HeartDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+    def transform_box(self, size, box):
+        x, y = size
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Resize((x, y)),
+            ]
+        )
+
+        return transform(box)
+
     def __getitem__(self, idx, return_full_data=False):
         if return_full_data:
             return self.data[idx]
         else:
             item = self.data[idx]
+            box = item["box"].to(self.device)
             item = augment_sample(item)
             item["frame"] = torch.Tensor(item["frame"]).to(self.device)
             item["label"] = torch.Tensor(item["label"]).to(self.device)
-            return (item["frame"], item["label"])
+            return (item["frame"], item["label"], box)
 
 
 class HeartTestDataset(Dataset):

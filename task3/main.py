@@ -8,16 +8,16 @@ from torchvision import transforms
 from unet import UNet
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
+# DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 REG_VAL = 1
-IMAGE_SIZE = 512
+IMAGE_SIZE = 256
 EPOCHS = 100
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
 
-    for batch, (x, y) in enumerate(train_loader):
+    for batch, (x, y, _) in enumerate(train_loader):
         output = model(x)
         loss = loss_fn(output, y)
 
@@ -35,7 +35,7 @@ def test_loop(model, test_loader, loss_fn, epoch):
     size = 0
 
     with torch.no_grad():
-        for x, y in test_loader:
+        for x, y, box in test_loader:
             output = model(x)
             test_loss += loss_fn(output, y).item()
             size += 1
@@ -45,11 +45,12 @@ def test_loop(model, test_loader, loss_fn, epoch):
 
     # output = (output > 0.6).float()
 
-    utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(
-        output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
-    )
-    utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
+    utils.overlay_segmentation(frame=x, segmentation=output, filename=f"img/res", true_label=y, box=box)
+    # utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
+    # utils.produce_gif(
+    #     output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
+    # )
+    # utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
 
 def main(train=True, do_evaluation=False, create_submission=False):
@@ -58,15 +59,15 @@ def main(train=True, do_evaluation=False, create_submission=False):
     model.to(DEVICE)
 
     data_train = dataset.HeartDataset(
-        path="data/train_data_1_512", n_batches=4, unpack_frames=True, device=DEVICE
+        path="data/train_data_1_256", n_batches=4, unpack_frames=True, device=DEVICE
     )
-    data_test = dataset.HeartTestDataset(
-        path="data/test_data_1_512",
-        n_batches=4,
-        unpack_frames=False,
-        return_full_data=True,
-        device=DEVICE,
-    )
+    # data_test = dataset.HeartTestDataset(
+    #     path="data/test_data_1_256",
+    #     n_batches=4,
+    #     unpack_frames=False,
+    #     return_full_data=True,
+    #     device=DEVICE,
+    # )
 
     pretrain_length = int(len(data_train) * 0.8)
     val_length = len(data_train) - pretrain_length
@@ -155,7 +156,7 @@ def submit(
 
 
 if __name__ == "__main__":
-    main(train=False, do_evaluation=True, create_submission=True)
+    main(train=True, do_evaluation=False, create_submission=False)
     # evaluate()
     # model = UNet(in_channels=1, out_channels=1, init_features=32)
     # model.load_state_dict(torch.load("model.pth"))
