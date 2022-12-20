@@ -12,7 +12,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 REG_VAL = 1
 IMAGE_SIZE = 256
-EPOCHS = 100
+EPOCHS = 200
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -43,9 +43,17 @@ def test_loop(model, test_loader, loss_fn, epoch):
     test_loss /= size
     print(f"Test Error:     {test_loss:.8f}")
 
-    # output = (output > 0.6).float()
-
-    utils.overlay_segmentation(frame=x, segmentation=output, filename=f"img/res", true_label=y, box=box)
+    # output = (output > 0.6).bool()
+    
+    utils.overlay_segmentation(
+        frame=x[0].squeeze().cpu().detach().numpy(), 
+        segmentation=output[0].squeeze().cpu().detach().numpy(),
+        filename=f"img/res",
+        true_label=np.array(y[0].squeeze().cpu().detach().numpy(), dtype=bool),
+        box=box[0].squeeze().cpu().detach().numpy(),
+        convert_seg_to_bool=True,
+        threshold=0.8
+    )
     # utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
     # utils.produce_gif(
     #     output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
@@ -61,13 +69,13 @@ def main(train=True, do_evaluation=False, create_submission=False):
     data_train = dataset.HeartDataset(
         path="data/train_data_1_256", n_batches=4, unpack_frames=True, device=DEVICE
     )
-    # data_test = dataset.HeartTestDataset(
-    #     path="data/test_data_1_256",
-    #     n_batches=4,
-    #     unpack_frames=False,
-    #     return_full_data=True,
-    #     device=DEVICE,
-    # )
+    data_test = dataset.HeartTestDataset(
+         path="data/test_data_1_256",
+         n_batches=4,
+         unpack_frames=False,
+         return_full_data=True,
+         device=DEVICE,
+    )
 
     pretrain_length = int(len(data_train) * 0.8)
     val_length = len(data_train) - pretrain_length
@@ -76,9 +84,9 @@ def main(train=True, do_evaluation=False, create_submission=False):
     )
 
     train_loader = torch.utils.data.DataLoader(
-        data_pretrain, batch_size=8, shuffle=True
+        data_pretrain, batch_size=16, shuffle=True
     )
-    val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(data_val, batch_size=16, shuffle=True)
     torch.set_grad_enabled(True)
 
     # loss_fn = torchmetrics.JaccardIndex(num_classes=2)
@@ -108,7 +116,7 @@ def main(train=True, do_evaluation=False, create_submission=False):
         print("Evaluating model")
         test_loop(model, val_loader, loss_fn, 0)
     if create_submission:
-        submit(model, data_test, True)
+        submit(model, data_test, create_gif=True)
 
 
 def submit(
@@ -152,11 +160,11 @@ def submit(
             stacked = np.concatenate([video, mask], axis=1)
             utils.produce_gif(stacked, f"pred_img/{name}.gif")
 
-    utils.save_zipped_pickle(submission, "submission.pkl")
+    utils.save_zipped_pickle(submission, f"submission_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pkl")
 
 
 if __name__ == "__main__":
-    main(train=True, do_evaluation=False, create_submission=False)
+    main(train=False, do_evaluation=False, create_submission=True)
     # evaluate()
     # model = UNet(in_channels=1, out_channels=1, init_features=32)
     # model.load_state_dict(torch.load("model.pth"))

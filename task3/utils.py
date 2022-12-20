@@ -264,11 +264,15 @@ def find_roi(frame, window_size, stride):
     return max_window, max_region
 
 
-def overlay_segmentation(frame, segmentation, filename, box=None, true_label=None):
+def overlay_segmentation(frame, segmentation, filename, box=None, true_label=None, convert_seg_to_bool=False, threshold=0.9):
+    if convert_seg_to_bool:
+        segmentation = np.where(segmentation > threshold, True, False)
+    
     masks = []
     masks.append(segmentation)
     mask_labels = ["segmentation"]
     layers = 1
+    
     if box is not None:
         layers += 1
         masks.append(box)
@@ -281,6 +285,7 @@ def overlay_segmentation(frame, segmentation, filename, box=None, true_label=Non
     
     cmap = plt.cm.tab20(np.arange(layers))
     
+    plt.figure(figsize=(3,3), dpi=300)
     fig = overlay_masks(frame, masks, labels=mask_labels, colors=cmap, mask_alpha=0.5)
     fig.savefig(f"{filename}.png", bbox_inches="tight", dpi=300)
 
