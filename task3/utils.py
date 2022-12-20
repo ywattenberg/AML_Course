@@ -21,12 +21,13 @@ from segmentation_mask_overlay import overlay_masks
 warnings.filterwarnings("ignore")
 
 
-def post_process_mask(mask, size, erode_it=1, dilate_it=1):
+def post_process_mask(mask, size, erode_it=5, dilate_it=2):
     T = transforms.Resize(size, interpolation=transforms.InterpolationMode.BILINEAR)
     tmp = T(mask).permute(1, 2, 0).cpu().detach().numpy()
     tmp = np.where(tmp > 0.6, 255, 0).astype(np.uint8)
-    kernel = np.ones((6, 6), np.uint8)
+    kernel = np.ones((3, 3), np.uint8)
     tmp = cv2.erode(tmp, kernel, iterations=erode_it)
+    kernel = np.ones((5, 5), np.uint8)
     tmp = cv2.dilate(tmp, kernel, iterations=dilate_it)
     tmp = tmp > 200
     return tmp
