@@ -57,10 +57,10 @@ def main(train=True, do_evaluation=False, create_submission=False):
     model.to(DEVICE)
 
     data_train = dataset.InterpolatedHeartDataset(
-        path="data/train_data_1_512", n_batches=4, unpack_frames=True, device=DEVICE
+        path="data/train_data_1_256", n_batches=4, unpack_frames=True, device=DEVICE
     )
     data_test = dataset.HeartTestDataset(
-        path="data/test_data_1_512",
+        path="data/test_data_1_256",
         n_batches=4,
         unpack_frames=False,
         return_full_data=True,
@@ -148,7 +148,7 @@ def submit(
 
 
 if __name__ == "__main__":
-    main(train=False, do_evaluation=True, create_submission=True)
+    main(train=True, do_evaluation=False, create_submission=False)
     # evaluate()
     # model = UNet(in_channels=1, out_channels=1, init_features=32)
     # model.load_state_dict(torch.load("model.pth"))
