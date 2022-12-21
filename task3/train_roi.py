@@ -6,6 +6,7 @@ import loss
 import utils
 import rcnn
 from torch.utils.data import DataLoader
+import unet_small
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -53,13 +54,17 @@ def test_loop(model, test_loader, loss_fn, epoch):
     )
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
+    return test_loss
+
 
 def main():
+    best_loss = 1
     train_data = dataset_roi.BoxDataset(
         path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
         n_batches=2,
         unpack_frames=True,
         device=DEVICE,
+        stride=3,
     )
 
     val_data = dataset_roi.BoxDataset(
@@ -86,9 +91,13 @@ def main():
         print(f"--------------------------")
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
-        test_loop(model, val_loader, loss_fn, epoch)
+        current_loss = test_loop(model, val_loader, loss_fn, epoch)
 
-        if epoch % 50 == 0:
+        if best_loss > current_loss:
+            best_loss = current_loss
+            torch.save(model.state_dict(), f"model_box_all_data_best.pth")
+
+        if epoch % 10 == 0:
             torch.save(model.state_dict(), f"model_box_all_data_{epoch}.pth")
 
     torch.save(model.state_dict(), "model_box_all_data_final.pth")
