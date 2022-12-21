@@ -11,15 +11,16 @@ from torch.utils.data import DataLoader
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
+
 REG_VAL = 1
 IMAGE_SIZE = 256
-EPOCHS = 50
+EPOCHS = 10
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
 
     for batch, (x, y) in enumerate(train_loader):
-        output = model(x.unsqueeze(1))
+        output = model(x)
         loss = loss_fn(output, y)
 
         optimizer.zero_grad()
@@ -37,7 +38,7 @@ def test_loop(model, test_loader, loss_fn, epoch):
 
     with torch.no_grad():
         for x, y in test_loader:
-            output = model(x.unsqueeze(1))
+            output = model(x)
             test_loss += loss_fn(output, y).item()
             size += 1
 
@@ -46,22 +47,34 @@ def test_loop(model, test_loader, loss_fn, epoch):
 
     # output = (output > 0.6).float()
 
-    utils.produce_gif(x[0].unsqueeze(1).permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
+    utils.produce_gif(
+        x[0].unsqueeze(1).permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif"
+    )
+    utils.produce_gif(
+        output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
+    )
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
 
 def main():
     train_data = dataset_roi.BoxDataset(
         path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
-        n_batches=4,
+        n_batches=2,
         unpack_frames=True,
         device=DEVICE,
     )
-
-    pretrain_length = int(len(train_data) * 0.8)
-    val_length = len(train_data) - pretrain_length
-    train_data, val_data = torch.utils.data.random_split(train_data, [pretrain_length, val_length])
+    val_data = dataset_roi.BoxDataset(
+        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
+        n_batches=1,
+        unpack_frames=True,
+        device=DEVICE,
+        test=True,
+    )
+    # pretrain_length = int(len(train_data) * 0.8)
+    # val_length = len(train_data) - pretrain_length
+    # train_data, val_data = torch.utils.data.random_split(
+    #     train_data, [pretrain_length, val_length]
+    # )
     train_loader = DataLoader(train_data, batch_size=8, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=8, shuffle=True)
 
@@ -75,8 +88,8 @@ def main():
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
         test_loop(model, val_loader, loss_fn, epoch)
-        
-        if epoch % 10 == 0:
+
+        if epoch % 50 == 0:
             torch.save(model.state_dict(), f"model_box_all_data_{epoch}.pth")
 
     torch.save(model.state_dict(), "model_box_all_data_final.pth")

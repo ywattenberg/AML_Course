@@ -3,13 +3,15 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import utils
 import numpy as np
-from data_aug import augment_sample
+from data_aug import augment_sample, augment_transfrom
 
 BOX_SHAPE = (256, 256)
 
 
 class BoxDataset(Dataset):
-    def __init__(self, path, n_batches=1, unpack_frames=False, device="cpu"):
+    def __init__(
+        self, path, n_batches=1, unpack_frames=False, device="cpu", test=False
+    ):
         # path without ending and without batch number
         # for file test_data_5_112_0.npz the path is test_data_5_112
 
@@ -26,6 +28,10 @@ class BoxDataset(Dataset):
                     )
         else:
             self.data = np.load(f"{path}_{0}.npz", allow_pickle=True)["arr_0"]
+        if not test:
+            self.data = self.data[6:]
+        else:
+            self.data = self.data[0:6]
         # self.data = utils.load_zipped_pickle(path)
 
         if unpack_frames:
@@ -46,6 +52,7 @@ class BoxDataset(Dataset):
                     {
                         "name": entry["name"],
                         "frame": entry["nmf"][i, :, :].numpy().astype(np.float64),
+                        "frames": [i],
                         "box": box_transformed,
                         "box_coordinates": self.get_coordinates_box(box_transformed),
                         "dataset": entry["dataset"],
@@ -67,7 +74,12 @@ class BoxDataset(Dataset):
     def get_coordinates_box(self, box):
         box = box.squeeze()
         rows, cols = np.where(box == 1)
-        r_min, r_max, c_min, c_max = np.min(rows), np.max(rows), np.min(cols), np.max(cols)
+        r_min, r_max, c_min, c_max = (
+            np.min(rows),
+            np.max(rows),
+            np.min(cols),
+            np.max(cols),
+        )
         return [(r_min, c_min), (r_max, c_max)]
 
     def __len__(self):
@@ -78,6 +90,10 @@ class BoxDataset(Dataset):
             return self.data[idx]
         else:
             item = self.data[idx]
-            item["frame"] = torch.Tensor(item["frame"]).to(self.device)
+            item["frame"] = torch.Tensor(item["frame"]).to(self.device).unsqueeze(0)
             item["box"] = torch.Tensor(item["box"]).to(self.device).int()
+
+            item = augment_transfrom(self.data[idx], has_label=False)
+            item["frame"] = item["frame"]
+            item["box"] = item["box"]
             return item["frame"], item["box"]
