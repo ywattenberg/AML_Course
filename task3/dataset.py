@@ -187,3 +187,67 @@ class HeartTestDataset(Dataset):
             # item = augment_sample(item)
             item["frame"] = torch.Tensor(item["frame"]).to(self.device)
             return (item["frame"].unsqueeze(0), None)
+
+
+class InterpolationSet(HeartDataset):
+    def __init__(self, path, n_batches=1, unpack_frames=False, device="cpu", interpol_size=0, focus_on_middle_frame=1):
+        # path without ending and without batch number
+        # for file test_data_5_112_0.npz the path is test_data_5_112
+        if interpol_size % 2 == 0 or type(interpol_size) != int:
+            raise ValueError("interpol_size must be odd")
+
+        super.__init__(path, n_batches, unpack_frames, device)
+        self.interpol_size = interpol_size
+        self.focus_on_middle_frame = focus_on_middle_frame
+
+
+    def unpack_frames(self, data=None):
+        if data is None:
+            data = self.data
+
+        half = self.interpol_size // 2
+
+        unpacked_data = []
+        for vid in data:
+            for labeled_frame in vid["frames"]:
+                stacked_frames = []
+                for i in range(half):
+                    stacked_frames.append(vid["video"][labeled_frame - half + i])
+                    stacked_frames.append(vid["video"][labeled_frame + half - i])
+                
+                for i in range(self.focus_on_middle_frame):
+                    stacked_frames.append(vid["video"][labeled_frame])
+
+                print(stacked_frames.shape)
+                unpacked_data.append(
+                    {
+                        "name": vid["name"],
+                        "frame_sequence": stacked_frames,
+                        "label": vid["labels"][labeled_frame],
+                        "box": vid["boxes"][labeled_frame]
+                    }
+                )
+                    
+
+        return unpacked_data
+        
+
+
+    def __len__(self):
+        return len(self.data)
+
+
+    def __getitem__(self, idx, return_full_data=False):
+        if return_full_data:
+            return self.data[idx]
+        else:
+            item = self.data[idx]
+            print(item["frame_sequence"].shape)
+
+
+            # item["frame"] = torch.Tensor(item["frame"]).to(self.device)
+            # item["label"] = torch.Tensor(item["label"]).to(self.device)
+            # return (item["frame"], item["label"], box)
+
+    
+    
