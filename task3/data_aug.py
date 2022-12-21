@@ -76,22 +76,29 @@ def augment_sample(sample, augment_label=True, label_name="label"):
     return out_dict
 
 
-def augment_transfrom(sample, has_label=True, has_box=True):
+def augment_transfrom(samples, size=(256, 256), has_label=True, has_box=True):
     """
-    Augment image and label using the following transforms:
-    ColorJitter
-    RandomAffine
-    GaussianBlur
-    (Random Equalize)
-    (Resize)
+
+    Args:
+        - sample: list of dicts with keys "frame", "label", "box" depending on the has_label and has_box
+        - size: size of the output image
+        - has_label: if True, the sample has a label
+        - has_box: if True, the sample has a box
+
+    Augment image using the following transforms:
+        - ColorJitter
+        - GaussianBlur
+        - Random Equalize
+
+    Augment image, label and box using the following transforms:
+        - RandomAffine
 
     Input samples i.e. fames, labels, boxes should be in the following shape:
-    [channels, height, width] ([1, 256, 256])
+    [channels, height, width]
 
     """
 
     # Define the transforms that only need to be applied to the image
-    to_tensor = transforms.ToTensor()
     image_transforms = transforms.Compose(
         [
             transforms.ColorJitter(  # brightness, contrast, saturation, hue
@@ -110,28 +117,28 @@ def augment_transfrom(sample, has_label=True, has_box=True):
 
     # Get random params for the transforms
     random_affine = transforms.RandomAffine.get_params(
-        degrees=[-10.0, 10.0],  # degrees
-        translate=(0.1, 0.1),
-        scale_ranges=(0.9, 1.1),
+        degrees=[-15.0, 15.0],  # degrees
+        translate=(0.2, 0.2),
+        scale_ranges=(0.8, 1.2),
         shears=[-10, 10],
-        img_size=sample["frame"].shape[1:],
+        img_size=size,
     )
+    out_dict = samples
+    for sample in samples:
+        # Transform image and label with the random params
+        frame = sample["frame"]
+        frame = image_transforms(frame)
+        frame = transforms.functional.affine(frame, *random_affine)
+        out_dict["frame"] = frame
 
-    out_dict = sample
+        if has_label:
+            label = sample["label"]
+            label = transforms.functional.affine(label, *random_affine)
+            out_dict["label"] = label
 
-    # Transform image and label with the random params
-    frame = sample["frame"]
-    frame = transforms.functional.affine(frame, *random_affine)
-    out_dict["frame"] = frame
+        if has_box:
+            box = sample["box"]
+            box = transforms.functional.affine(box, *random_affine)
+            out_dict["box"] = box
 
-    if has_label:
-        label = sample["label"]
-        label = transforms.functional.affine(label, *random_affine)
-        out_dict["label"] = label
-
-    if has_box:
-        box = sample["box"]
-        box = transforms.functional.affine(box, *random_affine)
-        out_dict["box"] = box
-
-    return out_dict
+        return out_dict

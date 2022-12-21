@@ -47,9 +47,7 @@ def test_loop(model, test_loader, loss_fn, epoch):
 
     # output = (output > 0.6).float()
 
-    utils.produce_gif(
-        x[0].unsqueeze(1).permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif"
-    )
+    utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
     utils.produce_gif(
         output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
     )
@@ -63,6 +61,7 @@ def main():
         unpack_frames=True,
         device=DEVICE,
     )
+
     val_data = dataset_roi.BoxDataset(
         path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
         n_batches=1,
