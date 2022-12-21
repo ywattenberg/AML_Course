@@ -6,15 +6,18 @@ import loss
 import interpol_net
 
 
+torch.manual_seed(42)
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
-REG_VAL = 3
+REG_VAL = [1,5]
 IMAGE_SIZE = 256
-EPOCHS_PRETRAIN = 100
-EPOCHS_INTERPOL = 100
-INTERPOL_SIZE = 5  # range of the interpolation --> has to be odd
-FOCUS_ON_MIDDLE_FRAME = 1  # how often we take the middle frame in the interpolated dataset
+EPOCHS_PRETRAIN = [300]
+EPOCHS_INTERPOL = [300]
+INTERPOL_SIZE = [3, 5, 7]  # range of the interpolation --> has to be odd
+FOCUS_ON_MIDDLE_FRAME = [1, 3]  # how often we take the middle frame in the interpolated dataset
+LEARNING_RATE = [0.0001, 0.00001]
 
 
 def train_loop(unet_pretrain_model, train_loader, loss_fn, optimizer):
@@ -54,13 +57,14 @@ def test_loop(unet_pretrain_model, test_loader, loss_fn):
     return test_loss
 
 
-def main(train_full=False):
+def main(reg_val, image_size, epochs_pretrain, epochs_interpol, interpol_size, focus_on_middle_frame, learning_rate, train_full=False):
+
     unet_pretrain_model = unet.UNet(in_channels=5, out_channels=1, init_features=32)
     # unet_pretrain_model = Generic_UNetPlusPlus(1, base_num_features=32, num_classes=1)
     unet_pretrain_model.to(DEVICE)
 
     data_train = dataset.HeartDataset(
-        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
+        path=f"data/train_data_{reg_val}_{image_size}",
         n_batches=4,
         unpack_frames=True,
         device=DEVICE,
@@ -77,15 +81,15 @@ def main(train_full=False):
     pretrain_length = int(len(data_train) * 0.8)
     val_length = len(data_train) - pretrain_length
     pretrain, validation = torch.utils.data.random_split(data_train, [pretrain_length, val_length])
-    train_loader = torch.utils.data.DataLoader(pretrain, batch_size=16, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(validation, batch_size=16, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(pretrain, batch_size=8, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(validation, batch_size=8, shuffle=True)
 
     unet_pretrain_model = unet.UNet(in_channels=1, out_channels=1, init_features=32)
     unet_pretrain_model.to(DEVICE)
     loss_fn = loss.JaccardLoss()
-    optimizer = torch.optim.Adam(unet_pretrain_model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(unet_pretrain_model.parameters(), lr=learning_rate)
 
-    epochs = EPOCHS_PRETRAIN
+    epochs = epochs_pretrain
     best_loss_pretrain = 1
     best_epoch_pretrain = 0
 
@@ -99,13 +103,15 @@ def main(train_full=False):
             best_epoch_pretrain = i + 1
             torch.save(
                 unet_pretrain_model.state_dict(),
-                f"unet_pretrain_model_{REG_VAL}_{IMAGE_SIZE}_best.pth",
+                f"models/unet_pretrain_model_{reg_val}_{image_size}_{epochs_pretrain}_{interpol_size}_{focus_on_middle_frame}_{learning_rate}_best.pth",
             )
 
     print(f"Best epoch: {best_epoch_pretrain}, Best loss: {best_loss_pretrain:.8f}")
+    with open("cross_val_info_pretrain.txt", "a") as f:
+        f.write(f"{reg_val}_{image_size}_{epochs_pretrain}_{interpol_size}_{focus_on_middle_frame}_{learning_rate} : Best epoch: {best_epoch_pretrain}, Best loss: {best_loss_pretrain:.8f}")
 
     unet_pretrain_model.load_state_dict(
-        torch.load(f"unet_pretrain_model_{REG_VAL}_{IMAGE_SIZE}_best.pth")
+        torch.load(f"models/unet_pretrain_model_{reg_val}_{image_size}_{epochs_pretrain}_{interpol_size}_{focus_on_middle_frame}_{learning_rate}_best.pth")
     )
     # freeze the unet_pretrain_model
     for param in unet_pretrain_model.parameters():
@@ -113,23 +119,22 @@ def main(train_full=False):
 
     # create the interpolated dataset
     data_interpol = dataset.InterpolationSet(
-        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
+        path=f"data/train_data_{reg_val}_{image_size}",
         n_batches=4,
         unpack_frames=True,
         device=DEVICE,
-        interpol_size=INTERPOL_SIZE,
-        focus_on_middle_frame=FOCUS_ON_MIDDLE_FRAME,
+        interpol_size=interpol_size,
+        focus_on_middle_frame=focus_on_middle_frame,
     )
 
-    number_of_frames = INTERPOL_SIZE + FOCUS_ON_MIDDLE_FRAME - 1
-    print(number_of_frames)
+    number_of_frames = interpol_size + focus_on_middle_frame - 1
     train_interpol_length = int(len(data_interpol) * 0.8)
     val_interpol_length = len(data_interpol) - train_interpol_length
     train_interpol, val_interpol = torch.utils.data.random_split(
         data_interpol, [train_interpol_length, val_interpol_length]
     )
-    train_interpol_loader = torch.utils.data.DataLoader(train_interpol, batch_size=16, shuffle=True)
-    val_interpol_loader = torch.utils.data.DataLoader(val_interpol, batch_size=16, shuffle=True)
+    train_interpol_loader = torch.utils.data.DataLoader(train_interpol, batch_size=8, shuffle=True)
+    val_interpol_loader = torch.utils.data.DataLoader(val_interpol, batch_size=8, shuffle=True)
 
     interpol_model = interpol_net.InterpolNet(
         unet_model=unet_pretrain_model,
@@ -139,9 +144,9 @@ def main(train_full=False):
     )
     interpol_model.to(DEVICE)
     loss_fn = loss.JaccardLoss()
-    optimizer = torch.optim.Adam(interpol_model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(interpol_model.parameters(), lr=learning_rate)
 
-    epochs = EPOCHS_INTERPOL
+    epochs = epochs_interpol
     best_loss_interpol = 1
     best_epoch_interpol = 0
 
@@ -155,12 +160,23 @@ def main(train_full=False):
             best_epoch_interpol = i + 1
             torch.save(
                 interpol_model.state_dict(),
-                f"unet_2_interpol_model_{REG_VAL}_{IMAGE_SIZE}_{INTERPOL_SIZE}_{FOCUS_ON_MIDDLE_FRAME}_best.pth",
+                f"models/unet_2_interpol_model_{reg_val}_{image_size}_{epochs_interpol}_{interpol_size}_{focus_on_middle_frame}_{learning_rate}_best.pth",
             )
 
     print(f"Best epoch: {best_epoch_pretrain}, Best loss: {best_loss_pretrain:.8f}")
     print(f"Best epoch: {best_epoch_interpol}, Best loss: {best_loss_interpol:.8f}")
 
+    with open("cross_val_info_interpol.txt", "a") as f:
+        f.write(f"{reg_val}_{image_size}_{epochs_pretrain}_{interpol_size}_{focus_on_middle_frame}_{learning_rate}: Best epoch: {best_epoch_pretrain}, Best loss: {best_loss_pretrain:.8f}")
+
 
 if __name__ == "__main__":
-    main()
+    for learning_rate in LEARNING_RATE:
+        for reg_val in REG_VAL:
+            for image_size in IMAGE_SIZE:
+                for epochs_pretrain in EPOCHS_PRETRAIN:
+                    for epochs_interpol in EPOCHS_INTERPOL:
+                        for interpol_size in INTERPOL_SIZE:
+                            for focus_on_middle_frame in FOCUS_ON_MIDDLE_FRAME:
+                                main(reg_val=reg_val, image_size=image_size, epochs_pretrain=epochs_pretrain, epochs_interpol=epochs_interpol, interpol_size=interpol_size, focus_on_middle_frame=focus_on_middle_frame, learning_rate=learning_rate)
+    
