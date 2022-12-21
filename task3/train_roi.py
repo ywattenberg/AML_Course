@@ -6,6 +6,8 @@ import loss
 import utils
 import rcnn
 from torch.utils.data import DataLoader
+import unet_small
+
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -13,7 +15,9 @@ DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 REG_VAL = 1
 IMAGE_SIZE = 256
-EPOCHS = 50
+EPOCHS = 20
+
+torch.manual_seed(0)
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
@@ -49,14 +53,18 @@ def test_loop(model, test_loader, loss_fn, epoch):
     utils.produce_gif(x[0].unsqueeze(1).permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
     utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
+    
+    return test_loss
 
 
 def main():
+    best_loss = 1;
     train_data = dataset_roi.BoxDataset(
         path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
-        n_batches=4,
+        n_batches=2,
         unpack_frames=True,
         device=DEVICE,
+        stride=3
     )
 
     pretrain_length = int(len(train_data) * 0.8)
@@ -74,7 +82,11 @@ def main():
         print(f"--------------------------")
         print("Epoch: {}".format(epoch))
         train_loop(model, train_loader, loss_fn, optimizer)
-        test_loop(model, val_loader, loss_fn, epoch)
+        current_loss = test_loop(model, val_loader, loss_fn, epoch)
+        
+        if best_loss > current_loss:
+            best_loss = current_loss
+            torch.save(model.state_dict(), f"model_box_all_data_best.pth")
         
         if epoch % 10 == 0:
             torch.save(model.state_dict(), f"model_box_all_data_{epoch}.pth")

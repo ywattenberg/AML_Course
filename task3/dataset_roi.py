@@ -9,7 +9,7 @@ BOX_SHAPE = (256, 256)
 
 
 class BoxDataset(Dataset):
-    def __init__(self, path, n_batches=1, unpack_frames=False, device="cpu"):
+    def __init__(self, path, n_batches=1, unpack_frames=False, device="cpu", stride=1):
         # path without ending and without batch number
         # for file test_data_5_112_0.npz the path is test_data_5_112
 
@@ -29,18 +29,18 @@ class BoxDataset(Dataset):
         # self.data = utils.load_zipped_pickle(path)
 
         if unpack_frames:
-            self.data = self.unpack_frames()
+            self.data = self.unpack_frames(stride=stride)
 
         self.device = device
 
-    def unpack_frames(self, data=None):
+    def unpack_frames(self, data=None, stride=1):
         if data is None:
             data = self.data
 
         unpacked_data = []
         for entry in data:
             number_of_frames = entry["nmf"].shape[0]
-            for i in range(number_of_frames):
+            for i in range(0, number_of_frames, stride):
                 box_transformed = self.transform_box(BOX_SHAPE, entry["box"])
                 unpacked_data.append(
                     {

@@ -296,3 +296,22 @@ def overlay_segmentation(
     fig.savefig(f"{filename}.png", bbox_inches="tight", dpi=300)
 
     return frame
+
+
+# function to intersect box with segmentation:
+# use numpy arrays with 0 and 1
+def intersect_box_seg(box, segmentation):
+    # arrays have to be numpy 2d arrays
+    assert(box.shape == segmentation.shape)
+    res = np.where(box == segmentation, True, False)
+    return res;
+
+def intersect_box_frame(box, frame):
+    assert(box.shape == frame.shape)
+    for i in range(box.shape[0]):
+        for j in range(box.shape[1]:
+            if box[i][j] < 0.9:
+                frame[i][j] = 0
+    
+    
+
