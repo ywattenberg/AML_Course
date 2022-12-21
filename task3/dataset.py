@@ -72,21 +72,30 @@ class HeartDataset(Dataset):
             return self.data[idx]
         else:
             item = self.data[idx]
-            box = item["box"].to(self.device)
-            item = augment_sample(item)
-            item["frame"] = torch.Tensor(item["frame"]).to(self.device)
-            item["label"] = torch.Tensor(item["label"]).to(self.device)
-            return (item["frame"], item["label"])
+            a = torch.Tensor(item["frame"]).to(self.device)
+            b = torch.Tensor(item["label"]).to(self.device)
+            dic = {"frame": a.unsqueeze(0), "label": b.unsqueeze(0)}
+            
+            res = augment_transfrom([dic], has_box=False)[0]
+            return (res["frame"], res["label"])
 
 
 
 class HeartTestDataset(Dataset):
     def __init__(
-        self, path, n_batches=1, unpack_frames=False, return_full_data=False, device="cpu"
+        self, path, n_batches=1, unpack_frames=False, return_full_data=False, device="cpu", interpol_size=0, focus_on_middle_frame=1
     ):
         # path without ending and without batch number
         # for file test_data_5_112_0.npz the path is test_data_5_112
+        if interpol_size % 2 == 0 or type(interpol_size) != int:
+            raise ValueError("interpol_size must be odd")
+
+
         self.return_full_data = return_full_data
+        self.interpol_size = interpol_size
+        self.focus_on_middle_frame = focus_on_middle_frame
+        self.device = device
+
         if n_batches > 1:
             for i in range(n_batches):
                 if i == 0:
@@ -105,7 +114,7 @@ class HeartTestDataset(Dataset):
         if unpack_frames:
             self.data = self.unpack_frames()
 
-        self.device = device
+
 
     def unpack_frames(self, data=None):
         if data is None:
@@ -113,26 +122,37 @@ class HeartTestDataset(Dataset):
 
         unpacked_data = []
         for entry in data:
-            for frame in range(len(entry["nmf"][:, 0, 0])):
-                unpacked_data.append(
-                    {
-                        "name": entry["name"],
-                        "frame": entry["nmf"][frame, :, :].numpy().astype(np.float64),
-                    }
-                )
+            frame = entry["nmf"].numpy().astype(np.float64)*255
+            frame = torch.Tensor(frame).to(self.device)
+            length = len(frame)
+            
+            half = self.interpol_size // 2
+            begin = frame[0].repeat(half, 1, 1)
+            end = frame[-1].repeat(half, 1, 1)
+            frame = torch.cat([begin, frame, end])
+
+            unpacked_data.append(
+                {
+                    "name": entry["name"],
+                    "frame": frame,
+                }
+            )
+
         return unpacked_data
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        if self.return_full_data:
-            return self.data[idx]
-        else:
-            item = self.data[idx]
+        half = self.interpol_size // 2
+
+        res = []
+        name = self.data[idx]["name"]
+        frame = self.data[idx]["frame"]
+        for i in range(half, len(frame)-half):
             # item = augment_sample(item)
-            item["frame"] = torch.Tensor(item["frame"]).to(self.device)
-            return (item["frame"].unsqueeze(0), None)
+            res.append(frame[i-half:i+half+1, :, :])
+        return (res, name)
 
 
 class InterpolationSet(Dataset):
@@ -158,11 +178,12 @@ class InterpolationSet(Dataset):
                     )
         else:
             self.data = np.load(f"{path}_{0}.npz", allow_pickle=True)["arr_0"]
+        self.device = device
 
         if unpack_frames:
             self.data = self.unpack_frames()
         
-        self.device = device
+        
 
 
 
@@ -201,8 +222,8 @@ class InterpolationSet(Dataset):
                 unpacked_data.append(
                     {
                         "name": vid["name"],
-                        "frame": stacked_frames,
-                        "label": torch.tensor(vid["label"][labeled_frame]).unsqueeze(0),
+                        "frame": stacked_frames.to(self.device),
+                        "label": torch.tensor(vid["label"][labeled_frame]).unsqueeze(0).to(self.device),
                         "box": vid["box"]
                     }
                 )
