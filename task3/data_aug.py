@@ -102,10 +102,10 @@ def augment_transfrom(
     """
     # Get random params for the transforms
     random_affine = transforms.RandomAffine.get_params(
-        degrees=[-15.0, 15.0],  # degrees
-        translate=(0.2, 0.2),
+        degrees=[-5.0, 5.0],  # degrees
+        translate=(0.1, 0.1),
         scale_ranges=(0.8, 1.2),
-        shears=[-10, 10],
+        shears=[-5, 5],
         img_size=size,
     )
 
@@ -113,10 +113,10 @@ def augment_transfrom(
     image_transforms = transforms.Compose(
         [
             transforms.ColorJitter(  # brightness, contrast, saturation, hue
-                brightness=0.5,
-                contrast=0.3,
-                saturation=0.3,
-                hue=0.3,
+                brightness=(0.7, 1.3),
+                contrast=(0.7, 1.3),
+                saturation=(0.7, 1.3),
+                hue=(-0.3, 0.3),
             ),
             transforms.GaussianBlur(
                 kernel_size=(3, 3),
