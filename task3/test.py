@@ -2,6 +2,7 @@ import utils
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
+import torch
 from torch.nn import Conv2d
 from PIL import Image, ImageFilter
 from matplotlib import cm
@@ -20,9 +21,9 @@ def gaussian_filter(shape, sigma):
     """
     Returns a 2D gaussian filter specified by its shape and standard deviation.
     """
-    m, n = [(ss - 1.) / 2. for ss in shape]
-    y, x = np.ogrid[-m:m+1, -n:n+1]
-    h = np.exp(-(x * x + y * y) / (2. * sigma * sigma))
+    m, n = [(ss - 1.0) / 2.0 for ss in shape]
+    y, x = np.ogrid[-m : m + 1, -n : n + 1]
+    h = np.exp(-(x * x + y * y) / (2.0 * sigma * sigma))
     h[h < np.finfo(h.dtype).eps * h.max()] = 0
     sumh = h.sum()
     if sumh != 0:
@@ -36,15 +37,26 @@ def gaussian_filter(shape, sigma):
 # data = utils.load_zipped_pickle("data/train.pkl")
 
 data_interpol = dataset.InterpolationSet(
-        path=f"data/train_data_{1}_{256}",
-        n_batches=4,
-        unpack_frames=True,
-        device="cpu",
-        interpol_size=2,
-        focus_on_middle_frame=1,
+    path=f"data/train_data_{1}_{256}",
+    n_batches=2,
+    unpack_frames=True,
+    device="gpu",
+    interpol_size=11,
+    focus_on_middle_frame=1,
+)
+for i in range(10):
+    tmp = (
+        torch.concat(
+            [data_interpol[i][0], data_interpol[i][1].repeat(11, 1, 1, 1)],
+            dim=2,
+        )
+        .squeeze()
+        .permute(1, 2, 0)
+        .cpu()
+        .numpy()
     )
+    utils.produce_gif(tmp, f"pred_img/pred_{i}.gif")
 
-print(data_interpol[0])
 
 # folder = "results/0"
 
@@ -53,7 +65,7 @@ print(data_interpol[0])
 #     if not filename.startswith("."):
 #         img = cv2.imread(os.path.join(folder,filename))
 #         images.append(img)
-    
+
 # # print(np.array(images).shape)
 # images = np.array(images)
 # print(images.shape)
@@ -166,28 +178,22 @@ quit()
 W = utils.apply_PCA(data[0]["video"], 2)
 print(W.shape)
 W = W.reshape(112, 112, 334)
-plt.imshow(W[:,:,[4]], cmap='gray', vmin=0, vmax=1)
+plt.imshow(W[:, :, [4]], cmap="gray", vmin=0, vmax=1)
 plt.show()
-
-
 
 
 # print(tmp.shape)
 # print(tmp)
 
-with imageio.get_writer('PCA_2.gif', mode='I') as writer:
-        print(data[0]['video'].shape[2])
-        for i in range (data[0]['video'].shape[2]):
-            image = W[:, :, i]
-            writer.append_data(image)
+with imageio.get_writer("PCA_2.gif", mode="I") as writer:
+    print(data[0]["video"].shape[2])
+    for i in range(data[0]["video"].shape[2]):
+        image = W[:, :, i]
+        writer.append_data(image)
 
-W = data[0]["video"]/255 - W
-with imageio.get_writer('PCA_2_neg.gif', mode='I') as writer:
-        print(data[0]['video'].shape[2])
-        for i in range (data[0]['video'].shape[2]):
-            image = W[:, :, i]
-            writer.append_data(image)
-
-
-
-    
+W = data[0]["video"] / 255 - W
+with imageio.get_writer("PCA_2_neg.gif", mode="I") as writer:
+    print(data[0]["video"].shape[2])
+    for i in range(data[0]["video"].shape[2]):
+        image = W[:, :, i]
+        writer.append_data(image)
