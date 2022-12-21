@@ -40,6 +40,13 @@ class InterpolNet(nn.Module):
         self.conv = nn.Conv2d(in_channels=features, out_channels=out_channels, kernel_size=1)
 
     def forward(self, x):
+        for i in range(self.in_channels):
+            if i == 0:
+                tmp = self.unet_model(x[i])
+            else:
+                tmp = torch.cat((tmp, self.unet_model(x[i])), dim=1)
+
+        x = tmp
         enc1 = self.encoder1(x)
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
