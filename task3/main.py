@@ -19,7 +19,7 @@ EPOCHS = 400
 
 def train_loop(model, train_loader, loss_fn, optimizer):
 
-    for batch, (x, y, _) in enumerate(train_loader):
+    for batch, (x, y) in enumerate(train_loader):
         output = model(x)
         loss = loss_fn(output, y)
 
@@ -37,7 +37,7 @@ def test_loop(model, test_loader, loss_fn, epoch):
     size = 0
 
     with torch.no_grad():
-        for x, y, box in test_loader:
+        for x, y in test_loader:
             output = model(x)
             test_loss += loss_fn(output, y).item()
             size += 1
@@ -48,9 +48,7 @@ def test_loop(model, test_loader, loss_fn, epoch):
     # output = (output > 0.6).float()
 
     utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(
-        output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif"
-    )
+    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
     utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
 
@@ -82,9 +80,7 @@ def main(train=True, do_evaluation=False, create_submission=False):
         data_train, [pretrain_length, val_length]
     )
 
-    train_loader = torch.utils.data.DataLoader(
-        data_pretrain, batch_size=8, shuffle=True
-    )
+    train_loader = torch.utils.data.DataLoader(data_pretrain, batch_size=8, shuffle=True)
     val_loader = torch.utils.data.DataLoader(data_val, batch_size=8, shuffle=True)
     torch.set_grad_enabled(True)
 
@@ -100,15 +96,11 @@ def main(train=True, do_evaluation=False, create_submission=False):
             train_loop(model, train_loader, loss_fn, optimizer)
             test_loop(model, val_loader, loss_fn, epoch)
             if epoch % 100 == 0 and epoch != 0:
-                torch.save(
-                    model.state_dict(), f"model_{IMAGE_SIZE}_{REG_VAL}_{epoch}.pth"
-                )
+                torch.save(model.state_dict(), f"model_{IMAGE_SIZE}_{REG_VAL}_{epoch}.pth")
         torch.save(model.state_dict(), f"model_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pth")
     else:
         model.load_state_dict(
-            torch.load(
-                f"model_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pth", map_location=DEVICE
-            )
+            torch.load(f"model_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pth", map_location=DEVICE)
         )
 
     if do_evaluation:
@@ -160,9 +152,7 @@ def submit(
             stacked = np.concatenate([video, mask], axis=1)
             utils.produce_gif(stacked, f"pred_img/{name}.gif")
 
-    utils.save_zipped_pickle(
-        submission, f"submission_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pkl"
-    )
+    utils.save_zipped_pickle(submission, f"submission_{IMAGE_SIZE}_{REG_VAL}_{EPOCHS}.pkl")
 
 
 if __name__ == "__main__":

@@ -76,7 +76,7 @@ class HeartDataset(Dataset):
             item = augment_sample(item)
             item["frame"] = torch.Tensor(item["frame"]).to(self.device)
             item["label"] = torch.Tensor(item["label"]).to(self.device)
-            return (item["frame"], item["label"], box)
+            return (item["frame"], item["label"])
 
 
 
@@ -180,14 +180,12 @@ class InterpolationSet(Dataset):
                 # print(vid["nmf"].shape)
                 for i in range(half):
                     if labeled_frame - half + i < 0:
-                        print("undershot")
                         stacked_frames.append(vid["nmf"][0, :, :])
                     else:
                         stacked_frames.append(vid["nmf"][labeled_frame - half + i, :, :])
                     
                     # print(len(vid["nmf"][:, 0, 0]))
                     if labeled_frame + half - i >= len(vid["nmf"][:, 0, 0]):
-                        print("overshot")
                         stacked_frames.append(vid["nmf"][-1, :, :])
                     else:
                         stacked_frames.append(vid["nmf"][labeled_frame + half - i, :, :])
@@ -204,7 +202,8 @@ class InterpolationSet(Dataset):
                     {
                         "name": vid["name"],
                         "frame": stacked_frames,
-                        "label": torch.tensor(vid["label"][labeled_frame]).unsqueeze(0)
+                        "label": torch.tensor(vid["label"][labeled_frame]).unsqueeze(0),
+                        "box": vid["box"]
                     }
                 )
                     
@@ -227,7 +226,9 @@ class InterpolationSet(Dataset):
             }
             
             tmp = augment_transfrom([tmp], has_box=False, is_batched=True)[0]
-            return tmp["frame"], tmp["label"]
+            tmp["frame"] = tmp["frame"].squeeze(1)
+            # print(tmp["frame"].shape)
+            return (tmp["frame"], tmp["label"])
 
 
             # item["frame"] = torch.Tensor(item["frame"]).to(self.device)
