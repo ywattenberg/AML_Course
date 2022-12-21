@@ -16,7 +16,7 @@ import robust_nfm
 import torch_functions
 import cv2
 
-# from segmentation_mask_overlay import overlay_masks
+from segmentation_mask_overlay import overlay_masks
 
 
 warnings.filterwarnings("ignore")
@@ -311,9 +311,11 @@ def intersect_box_seg(box, segmentation):
 def intersect_box_frame(box, frame):
     assert(box.shape == frame.shape)
     for i in range(box.shape[0]):
-        for j in range(box.shape[1]:
+        for j in range(box.shape[1]):
             if box[i][j] < 0.9:
                 frame[i][j] = 0
+
+    return frame
     
     
 

@@ -9,6 +9,7 @@ from scipy.ndimage import convolve
 import robust_nfm
 import os
 import cv2
+import dataset
 
 import warnings
 
@@ -29,22 +30,33 @@ def gaussian_filter(shape, sigma):
     return h
 
 
-sub = utils.load_zipped_pickle("submission_256_1_200.pkl")
-print(sub)
+# sub = utils.load_zipped_pickle("submission_256_1_200.pkl")
+# print(sub)
 
 # data = utils.load_zipped_pickle("data/train.pkl")
 
-folder = "results/0"
+data_interpol = dataset.InterpolationSet(
+        path=f"data/train_data_{1}_{256}",
+        n_batches=4,
+        unpack_frames=True,
+        device="cpu",
+        interpol_size=2,
+        focus_on_middle_frame=1,
+    )
 
-images = []
-for filename in os.listdir(folder):
-    if not filename.startswith("."):
-        img = cv2.imread(os.path.join(folder,filename))
-        images.append(img)
+print(data_interpol[0])
+
+# folder = "results/0"
+
+# images = []
+# for filename in os.listdir(folder):
+#     if not filename.startswith("."):
+#         img = cv2.imread(os.path.join(folder,filename))
+#         images.append(img)
     
-# print(np.array(images).shape)
-images = np.array(images)
-print(images.shape)
+# # print(np.array(images).shape)
+# images = np.array(images)
+# print(images.shape)
 
 # utils.produce_gif_colour(images, "sub.gif")
 
