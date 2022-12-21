@@ -15,7 +15,7 @@ DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 REG_VAL = 1
 IMAGE_SIZE = 256
-EPOCHS = 10
+EPOCHS = 20
 
 
 def train_loop(model, train_loader, loss_fn, optimizer):
