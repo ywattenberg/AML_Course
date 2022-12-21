@@ -49,8 +49,6 @@ class InterpolNet(nn.Module):
             else:
                 tmp = torch.cat((tmp, self.unet_model(x[j].unsqueeze(1)).permute(1,0,2,3)), dim=0)
             
-        print(tmp.shape)
-            
         x = tmp
         enc1 = self.encoder1(x)
         enc2 = self.encoder2(self.pool1(enc1))

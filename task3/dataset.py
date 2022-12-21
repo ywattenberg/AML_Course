@@ -228,7 +228,7 @@ class InterpolationSet(Dataset):
             tmp = augment_transfrom([tmp], has_box=False, is_batched=True)[0]
             tmp["frame"] = tmp["frame"].squeeze(1)
             # print(tmp["frame"].shape)
-            return (tmp["frame"], tmp["label"])
+            return (tmp["frame"].to(self.device), tmp["label"].to(self.device))
 
 
             # item["frame"] = torch.Tensor(item["frame"]).to(self.device)

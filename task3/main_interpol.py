@@ -9,9 +9,9 @@ import interpol_net
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
-REG_VAL = 1
+REG_VAL = 3
 IMAGE_SIZE = 256
-EPOCHS_PRETRAIN = 0
+EPOCHS_PRETRAIN = 100
 EPOCHS_INTERPOL = 100
 INTERPOL_SIZE = 5  # range of the interpolation --> has to be odd
 FOCUS_ON_MIDDLE_FRAME = 1  # how often we take the middle frame in the interpolated dataset
@@ -47,9 +47,9 @@ def test_loop(unet_pretrain_model, test_loader, loss_fn):
 
     # output = (output > 0.6).float()
 
-    utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
-    utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
+    # utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
+    # utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
+    # utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
     return test_loss
 
