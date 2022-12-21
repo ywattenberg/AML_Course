@@ -137,8 +137,16 @@ def augment_transfrom(
         )
     batch_tensor = transforms.functional.affine(batch_tensor, *random_affine)
 
-    for i in range(len(samples)):
-        samples[i]["frame"] = batch_tensor[i].float()
+    batches = [t["frame"].shape[0] for t in samples]
+
+    if is_batched:
+        for i in range(len(samples)):
+            samples[i]["frame"] = batch_tensor[
+                sum(batches[:i]) : sum(batches[: (i + 1)])
+            ].float()
+    else:
+        for i in range(len(samples)):
+            samples[i]["frame"] = batch_tensor[i].float()
 
     out_dicts = samples
     for sample, out_dict in zip(samples, out_dicts):
