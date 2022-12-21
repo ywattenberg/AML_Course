@@ -33,11 +33,10 @@ class BoxDataset(Dataset):
         else:
             self.data = self.data[0:6]
         # self.data = utils.load_zipped_pickle(path)
+        self.device = device
 
         if unpack_frames:
             self.data = self.unpack_frames()
-
-        self.device = device
 
     def unpack_frames(self, data=None):
         if data is None:
@@ -48,12 +47,16 @@ class BoxDataset(Dataset):
             number_of_frames = entry["nmf"].shape[0]
             for i in range(number_of_frames):
                 box_transformed = self.transform_box(BOX_SHAPE, entry["box"])
+                frame = entry["nmf"][i, :, :].numpy().astype(np.float64) * 255
+                frame = torch.Tensor(
+                    frame.astype(np.uint8),
+                ).to(self.device)
                 unpacked_data.append(
                     {
                         "name": entry["name"],
-                        "frame": entry["nmf"][i, :, :].numpy().astype(np.float64),
+                        "frame": frame,
                         "frames": [i],
-                        "box": box_transformed,
+                        "box": torch.Tensor(box_transformed).to(self.device).int(),
                         "box_coordinates": self.get_coordinates_box(box_transformed),
                         "dataset": entry["dataset"],
                     }
@@ -89,11 +92,5 @@ class BoxDataset(Dataset):
         if return_full_data:
             return self.data[idx]
         else:
-            item = self.data[idx]
-            item["frame"] = torch.Tensor(item["frame"]).to(self.device).unsqueeze(0)
-            item["box"] = torch.Tensor(item["box"]).to(self.device).int()
-
-            item = augment_transfrom(self.data[idx], has_label=False)
-            item["frame"] = item["frame"]
-            item["box"] = item["box"]
-            return item["frame"], item["box"]
+            tmp = augment_transfrom(self.data[idx], has_label=False)
+            return tmp["frame"], tmp["box"]
