@@ -3,6 +3,7 @@ import unet
 import dataset
 import utils
 import loss
+import interpol_net
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -10,13 +11,16 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 REG_VAL = 1
 IMAGE_SIZE = 256
-EPOCHS = 400
+EPOCHS_PRETRAIN = 200
+EPOCHS_INTERPOL = 100
+INTERPOL_SIZE = 5 # range of the interpolation --> has to be odd
+FOCUS_ON_MIDDLE_FRAME = 1 # how often we take the middle frame in the interpolated dataset
 
 
-def train_loop(model, train_loader, loss_fn, optimizer):
+def train_loop(unet_pretrain_model, train_loader, loss_fn, optimizer):
 
     for batch, (x, y, _) in enumerate(train_loader):
-        output = model(x)
+        output = unet_pretrain_model(x)
         loss = loss_fn(output, y)
 
         optimizer.zero_grad()
@@ -28,13 +32,13 @@ def train_loop(model, train_loader, loss_fn, optimizer):
             # break
 
 
-def test_loop(model, test_loader, loss_fn):
+def test_loop(unet_pretrain_model, test_loader, loss_fn):
     test_loss = 0
     size = 0
 
     with torch.no_grad():
         for x, y, box in test_loader:
-            output = model(x)
+            output = unet_pretrain_model(x)
             test_loss += loss_fn(output, y).item()
             size += 1
 
@@ -52,9 +56,9 @@ def test_loop(model, test_loader, loss_fn):
 
 
 def main(train_full=False):
-    model = unet.UNet(in_channels=5, out_channels=1, init_features=32)
-    # model = Generic_UNetPlusPlus(1, base_num_features=32, num_classes=1)
-    model.to(DEVICE)
+    unet_pretrain_model = unet.UNet(in_channels=5, out_channels=1, init_features=32)
+    # unet_pretrain_model = Generic_UNetPlusPlus(1, base_num_features=32, num_classes=1)
+    unet_pretrain_model.to(DEVICE)
 
     data_train = dataset.HeartDataset(
         path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
@@ -77,35 +81,72 @@ def main(train_full=False):
     train_loader = torch.utils.data.DataLoader(pretrain, batch_size=16, shuffle=True)
     val_loader = torch.utils.data.DataLoader(validation, batch_size=16, shuffle=True)
 
-    model = unet.UNet(in_channels=1, out_channels=1, init_features=32)
-    model.to(DEVICE)
+    unet_pretrain_model = unet.UNet(in_channels=1, out_channels=1, init_features=32)
+    unet_pretrain_model.to(DEVICE)
     loss_fn = loss.JaccardLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(unet_pretrain_model.parameters(), lr=1e-4)
     
-    epochs = EPOCHS
-    best_loss = 1
-    best_epoch = 0
+    epochs = EPOCHS_PRETRAIN
+    best_loss_pretrain = 1
+    best_epoch_pretrain = 0
 
     for i in range(epochs):
         print(f"Epoch: {i}")
-        train_loop(model, train_loader, loss_fn, optimizer)
-        test_loss = test_loop(model, val_loader, loss_fn)
+        train_loop(unet_pretrain_model, train_loader, loss_fn, optimizer)
+        test_loss = test_loop(unet_pretrain_model, val_loader, loss_fn)
 
-        if test_loss < best_loss:
-            best_loss = test_loss
-            best_epoch = i+1
-            torch.save(model.state_dict(), f"model_{REG_VAL}_{IMAGE_SIZE}_best.pth")
+        if test_loss < best_loss_pretrain:
+            best_loss_pretrain = test_loss
+            best_epoch_pretrain = i+1
+            torch.save(unet_pretrain_model.state_dict(), f"unet_pretrain_model_{REG_VAL}_{IMAGE_SIZE}_best.pth")
         
-    print(f"Best epoch: {best_epoch}, Best loss: {best_loss:.8f}")
+    print(f"Best epoch: {best_epoch_pretrain}, Best loss: {best_loss_pretrain:.8f}")
 
 
-    model.load_state_dict(torch.load(f"model_{REG_VAL}_{IMAGE_SIZE}_best.pth"))
-    # freeze the model
-    for param in model.parameters():
+    unet_pretrain_model.load_state_dict(torch.load(f"unet_pretrain_model_{REG_VAL}_{IMAGE_SIZE}_best.pth"))
+    # freeze the unet_pretrain_model
+    for param in unet_pretrain_model.parameters():
         param.requires_grad = False
 
     
-    
+    # create the interpolated dataset
+    data_interpol = dataset.InterpolationSet(
+        path=f"data/train_data_{REG_VAL}_{IMAGE_SIZE}",
+        n_batches=4,
+        unpack_frames=True,
+        device=DEVICE,
+        interpol_size=INTERPOL_SIZE,
+        focus_on_middle_frame=FOCUS_ON_MIDDLE_FRAME,
+    )
+
+    number_of_frames = INTERPOL_SIZE + FOCUS_ON_MIDDLE_FRAME
+    train_interpol_length = int(len(data_interpol) * 0.8)
+    val_interpol_length = len(data_interpol) - train_interpol_length
+    train_interpol, val_interpol = torch.utils.data.random_split(data_interpol, [train_interpol_length, val_interpol_length])
+    train_interpol_loader = torch.utils.data.DataLoader(train_interpol, batch_size=16, shuffle=True)
+    val_interpol_loader = torch.utils.data.DataLoader(val_interpol, batch_size=16, shuffle=True)
+
+    interpol_model = interpol_net.InterpolNet(unet_model=unet_pretrain_model, in_channels=number_of_frames, out_channels=1, init_features=32)
+    interpol_model.to(DEVICE)
+    loss_fn = loss.JaccardLoss()
+    optimizer = torch.optim.Adam(interpol_model.parameters(), lr=1e-4)
+
+    epochs = EPOCHS_INTERPOL
+    best_loss_interpol = 1
+    best_epoch_interpol = 0
+
+    for i in range(epochs):
+        print(f"Epoch: {i}")
+        train_loop(interpol_model, train_interpol_loader, loss_fn, optimizer)
+        test_loss = test_loop(interpol_model, val_interpol_loader, loss_fn)
+
+        if test_loss < best_loss_interpol:
+            best_loss_interpol = test_loss
+            best_epoch_interpol = i+1
+            torch.save(interpol_model.state_dict(), f"unet_2_interpol_model_{REG_VAL}_{IMAGE_SIZE}_{INTERPOL_SIZE}_{FOCUS_ON_MIDDLE_FRAME}_best.pth")
+
+    print(f"Best epoch: {best_epoch_pretrain}, Best loss: {best_loss_pretrain:.8f}")
+    print(f"Best epoch: {best_epoch_interpol}, Best loss: {best_loss_interpol:.8f}")
 
     
     
