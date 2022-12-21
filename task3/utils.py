@@ -63,7 +63,9 @@ def transform_label(label, width=256, height=256):
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Resize((height, width), interpolation=transforms.InterpolationMode.NEAREST),
+            transforms.Resize(
+                (height, width), interpolation=transforms.InterpolationMode.NEAREST
+            ),
         ]
     )
     normalized_img = transform(label)

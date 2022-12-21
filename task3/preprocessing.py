@@ -11,9 +11,9 @@ import utils
 
 TEST = False
 DEVICE = "cuda"
-IMAGE_SIZE = 256
+IMAGE_SIZE = 512
 REG_VAL = 1
-SAVING_BATCHES = 2
+SAVING_BATCHES = 4
 
 if DEVICE == "cuda":
     from torch_functions import robust_nmf

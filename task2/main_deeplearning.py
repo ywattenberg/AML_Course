@@ -3,7 +3,8 @@ import model
 import numpy as np
 import pandas as pd
 import torch
-import utils
+
+# import utils
 from torch.nn import CrossEntropyLoss, Softmax
 from torch.utils.data import DataLoader
 
@@ -64,8 +65,8 @@ if __name__ == "__main__":
         train_data, [length_pretain_data, length_val_data]
     )
 
-    dataloader_pretrain = DataLoader(train_data, batch_size=64, shuffle=True)
-    dataloader_val = DataLoader(val_data, batch_size=64, shuffle=True)
+    dataloader_pretrain = DataLoader(train_data, batch_size=16, shuffle=True)
+    dataloader_val = DataLoader(val_data, batch_size=16, shuffle=True)
 
     nn_model = model.Model(num_of_features=num_of_features)
     loss = CrossEntropyLoss()
