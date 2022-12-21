@@ -82,7 +82,7 @@ def augment_transfrom(
     """
 
     Args:
-        - sample: list of dicts with keys "frame", "label", "box" depending on the has_label and has_box
+        - samples: list of dicts with keys "frame", "label", "box" depending on the has_label and has_box
         - size: size of the output image
         - is_batched: if True, the samples are batched together i.e. [batch, channel, height, width]
         - has_label: if True, the sample has a label
