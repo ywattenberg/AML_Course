@@ -76,12 +76,15 @@ def augment_sample(sample, augment_label=True, label_name="label"):
     return out_dict
 
 
-def augment_transfrom(samples, size=(256, 256), has_label=True, has_box=True):
+def augment_transfrom(
+    samples, size=(256, 256), is_batched=False, has_label=True, has_box=True
+):
     """
 
     Args:
         - sample: list of dicts with keys "frame", "label", "box" depending on the has_label and has_box
         - size: size of the output image
+        - is_batched: if True, the samples are batched together i.e. [batch, channel, height, width]
         - has_label: if True, the sample has a label
         - has_box: if True, the sample has a box
 
@@ -94,9 +97,17 @@ def augment_transfrom(samples, size=(256, 256), has_label=True, has_box=True):
         - RandomAffine
 
     Input samples i.e. fames, labels, boxes should be in the following shape:
-    [channels, height, width]
+    [channel, height, width]
 
     """
+    # Get random params for the transforms
+    random_affine = transforms.RandomAffine.get_params(
+        degrees=[-15.0, 15.0],  # degrees
+        translate=(0.2, 0.2),
+        scale_ranges=(0.8, 1.2),
+        shears=[-10, 10],
+        img_size=size,
+    )
 
     # Define the transforms that only need to be applied to the image
     image_transforms = transforms.Compose(
@@ -114,23 +125,24 @@ def augment_transfrom(samples, size=(256, 256), has_label=True, has_box=True):
             transforms.RandomEqualize(p=0.5),
         ]
     )
+    if is_batched:
+        batch_tensor = image_transforms(
+            torch.concat(
+                [sample["frame"].type(torch.uint8) for sample in samples], dim=0
+            )
+        )
+    else:
+        batch_tensor = image_transforms(
+            torch.stack([sample["frame"].type(torch.uint8) for sample in samples])
+        )
+    batch_tensor = transforms.functional.affine(batch_tensor, *random_affine)
 
-    # Get random params for the transforms
-    random_affine = transforms.RandomAffine.get_params(
-        degrees=[-15.0, 15.0],  # degrees
-        translate=(0.2, 0.2),
-        scale_ranges=(0.8, 1.2),
-        shears=[-10, 10],
-        img_size=size,
-    )
-    out_dict = samples
-    for sample in samples:
-        # Transform image and label with the random params
-        frame = sample["frame"]
-        frame = image_transforms(frame)
-        frame = transforms.functional.affine(frame, *random_affine)
-        out_dict["frame"] = frame
+    for i in range(len(samples)):
+        samples[i]["frame"] = batch_tensor[i].float()
 
+    out_dicts = samples
+    for sample, out_dict in zip(samples, out_dicts):
+        # Transform labels and box with the random params
         if has_label:
             label = sample["label"]
             label = transforms.functional.affine(label, *random_affine)
@@ -141,4 +153,4 @@ def augment_transfrom(samples, size=(256, 256), has_label=True, has_box=True):
             box = transforms.functional.affine(box, *random_affine)
             out_dict["box"] = box
 
-        return out_dict
+        return out_dicts

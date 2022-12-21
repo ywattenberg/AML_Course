@@ -50,9 +50,9 @@ class BoxDataset(Dataset):
             for i in range(0, number_of_frames, stride):
                 box_transformed = self.transform_box(BOX_SHAPE, entry["box"])
                 frame = entry["nmf"][i, :, :].numpy().astype(np.float64) * 255
-                frame = torch.Tensor(
-                    frame.astype(np.uint8),
-                ).to(self.device)
+                frame = (
+                    torch.Tensor(frame).type(torch.uint8).to(self.device).unsqueeze(0)
+                )
                 unpacked_data.append(
                     {
                         "name": entry["name"],
@@ -94,5 +94,9 @@ class BoxDataset(Dataset):
         if return_full_data:
             return self.data[idx]
         else:
-            tmp = augment_transfrom(self.data[idx], has_label=False)
+            tmp = {
+                "frame": self.data[idx]["frame"].clone(),
+                "box": self.data[idx]["box"].clone(),
+            }
+            tmp = augment_transfrom([tmp], has_label=False)[0]
             return tmp["frame"], tmp["box"]
