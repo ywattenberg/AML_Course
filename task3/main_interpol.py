@@ -12,7 +12,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # DEVICE = "mps" if torch.backends.mps.is_available() else DEVICE
 
 REG_VAL = [1,5]
-IMAGE_SIZE = 256
+IMAGE_SIZE = [256]
 EPOCHS_PRETRAIN = [300]
 EPOCHS_INTERPOL = [300]
 INTERPOL_SIZE = [3, 5, 7]  # range of the interpolation --> has to be odd
