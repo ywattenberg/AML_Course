@@ -11,7 +11,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 REG_VAL = 1
 IMAGE_SIZE = 256
-EPOCHS_PRETRAIN = 100
+EPOCHS_PRETRAIN = 0
 EPOCHS_INTERPOL = 100
 INTERPOL_SIZE = 5  # range of the interpolation --> has to be odd
 FOCUS_ON_MIDDLE_FRAME = 1  # how often we take the middle frame in the interpolated dataset
@@ -47,9 +47,9 @@ def test_loop(unet_pretrain_model, test_loader, loss_fn):
 
     # output = (output > 0.6).float()
 
-    # utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
-    # utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
-    # utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
+    utils.produce_gif(x[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/input.gif")
+    utils.produce_gif(output[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/output.gif")
+    utils.produce_gif(y[0].permute(1, 2, 0).cpu().detach().numpy(), f"img/label.gif")
 
     return test_loss
 
@@ -122,6 +122,7 @@ def main(train_full=False):
     )
 
     number_of_frames = INTERPOL_SIZE + FOCUS_ON_MIDDLE_FRAME - 1
+    print(number_of_frames)
     train_interpol_length = int(len(data_interpol) * 0.8)
     val_interpol_length = len(data_interpol) - train_interpol_length
     train_interpol, val_interpol = torch.utils.data.random_split(
