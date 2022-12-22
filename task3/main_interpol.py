@@ -62,13 +62,21 @@ def main(reg_val, image_size, epochs_pretrain, epochs_interpol, interpol_size, f
     unet_pretrain_model = unet.UNet(in_channels=5, out_channels=1, init_features=32)
     # unet_pretrain_model = Generic_UNetPlusPlus(1, base_num_features=32, num_classes=1)
     unet_pretrain_model.to(DEVICE)
-
-    data_train = dataset.HeartDataset(
+    
+    data_train = dataset.InterpolationSet(
         path=f"data/train_data_{reg_val}_{image_size}",
         n_batches=4,
         unpack_frames=True,
         device=DEVICE,
+        interpol_size=1,
+        focus_on_middle_frame=1,
     )
+    #data_train = dataset.HeartDataset(
+    #    path=f"data/train_data_{reg_val}_{image_size}",
+    #    n_batches=4,
+    #    unpack_frames=True,
+    #    device=DEVICE,
+    #)
 
     # data_test = dataset.HeartTestDataset(
     #     path=f"data/test_data_{REG_VAL}_{IMAGE_SIZE}",
